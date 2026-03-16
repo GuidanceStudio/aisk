@@ -233,14 +233,14 @@ Rendere l'output di `aisk models` più leggibile.
   ```
 - [x] Test: verificare raggruppamento e formattazione
 
-## M14: Aggiornamento README
+## M14: Aggiornamento README ✅
 
 Allineare il README allo stato attuale del progetto.
 
 ### Task
 
-- [ ] Aggiungere esempio d'uso senza virgolette (`aisk ge3flash what is the CAP theorem`)
-- [ ] Aggiungere Perplexity alias (`s`, `sps`) negli esempi
-- [ ] Rimuovere la necessità di `aisk init` esplicito dalla sezione Setup — spiegare che il wizard parte automaticamente al primo run
-- [ ] Mantenere `aisk init` documentato come comando per riconfigurare
-- [ ] Aggiornare sezione Usage con il flusso primo-run
+- [x] Aggiungere esempio d'uso senza virgolette (`aisk ge3flash what is the CAP theorem`)
+- [x] Aggiungere Perplexity alias (`s`, `sps`) negli esempi
+- [x] Rimuovere la necessità di `aisk init` esplicito dalla sezione Setup — spiegare che il wizard parte automaticamente al primo run
+- [x] Mantenere `aisk init` documentato come comando per riconfigurare
+- [x] Aggiornare sezione Usage con il flusso primo-run

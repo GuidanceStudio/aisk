@@ -31,8 +31,17 @@ uv tool install .
 
 ## Setup
 
+No explicit setup needed. On first run, `aisk` detects the missing configuration and launches the setup wizard automatically:
+
 ```bash
-# Interactive wizard — creates ~/.aisk/, asks for endpoint and API key
+aisk ge3flash "hello world"
+# → First run detected — launching setup wizard...
+# → Asks for endpoint and API key, then runs your query
+```
+
+To reconfigure later:
+
+```bash
 aisk init
 ```
 
@@ -76,10 +85,14 @@ aisk -q cls46 "translate to English: buongiorno"
 # Pipe from stdin
 echo "summarize this" | aisk gpt5mini
 
+# Search with Perplexity
+aisk s what is the mass of the sun
+aisk sps "latest news on Rust 2026"
+
 # Use a full model name directly (no alias needed)
 aisk perplexity/sonar "latest news on Rust 2026"
 
-# List available aliases
+# List available aliases (grouped by provider)
 aisk models
 
 # Show version
