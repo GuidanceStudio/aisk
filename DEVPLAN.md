@@ -180,16 +180,16 @@ Generare uno script di completion che legge gli alias da `~/.aisk/conf.toml` a r
 - [x] Test: verificare che gli script generati contengano gli alias corretti
 - [x] Rimuovere la nota "deferred" da M7
 
-## M11: Join messaggi senza virgolette
+## M11: Join messaggi senza virgolette ✅
 
 Bug pratico: `aisk ge3flash what is the CAP theorem` (senza quote) cattura solo "what" come messaggio.
 
 ### Task
 
-- [ ] In `cli.py`, joinare tutti gli args da posizione 1 in poi come messaggio: `" ".join(positional[1:])`
-- [ ] Se il risultato è vuoto, fallback a stdin come prima
-- [ ] Aggiornare i test CLI per coprire il caso multi-word senza quote
-- [ ] Aggiornare README con esempio senza virgolette
+- [x] In `cli.py`, joinare tutti gli args da posizione 1 in poi come messaggio: `" ".join(positional[1:])`
+- [x] Se il risultato è vuoto, fallback a stdin come prima
+- [x] Aggiornare i test CLI per coprire il caso multi-word senza quote
+- [x] Aggiornare README con esempio senza virgolette
 
 ## M12: Auto-init al primo run
 

@@ -63,11 +63,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {alias:12s} → {model_name}")
         return 0
 
-    # Main flow: aisk <model> [message]
+    # Main flow: aisk <model> [message words...]
     model_input = command
-    message: str | None = positional[1] if len(positional) > 1 else None
+    message: str | None = " ".join(positional[1:]) if len(positional) > 1 else None
 
-    if message is None:
+    if not message:
         if sys.stdin.isatty():
             print("Error: no message provided. Pass it as an argument or pipe via stdin.", file=sys.stderr)
             return 2

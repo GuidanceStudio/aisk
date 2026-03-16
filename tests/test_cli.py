@@ -101,3 +101,17 @@ def test_passthrough_model(capsys, monkeypatch):
         assert main(["perplexity/sonar", "test"]) == 0
     out = capsys.readouterr().out
     assert "perplexity/sonar" in out
+
+
+def test_multiword_message_without_quotes(capsys, monkeypatch):
+    """aisk ge3flash what is the CAP theorem — joins all words after model."""
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    received = {}
+
+    def capture_stream(endpoint, api_key, model, message, **kw):
+        received["message"] = message
+        yield ContentChunk("reply")
+
+    with patch("aisk.cli.stream_chat", capture_stream):
+        assert main(["ge3flash", "what", "is", "the", "CAP", "theorem"]) == 0
+    assert received["message"] == "what is the CAP theorem"

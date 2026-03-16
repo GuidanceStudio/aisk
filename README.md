@@ -67,6 +67,9 @@ cls46 = "anthropic/claude-sonnet-4"
 # Ask a question (verbose mode, default)
 aisk ge3flash "what is the CAP theorem?"
 
+# No quotes needed — all words after the model are joined automatically
+aisk ge3flash what is the CAP theorem
+
 # Quiet mode — only the LLM response, no decoration
 aisk -q cls46 "translate to English: buongiorno"
 
