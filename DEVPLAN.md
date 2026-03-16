@@ -108,9 +108,10 @@ AISK_API_KEY=
 - [x] Stdin support: if no message arg and stdin is not a TTY, read from stdin
 - [x] Exit codes: 0 success, 1 API/config error, 2 usage error
 
-## M7: Packaging and distribution
+## M7: Packaging and distribution ✅
 
-- [ ] Ensure `uv tool install .` works from local clone
-- [ ] Ensure `uv tool install git+ssh://git@github.com/Ymx1ZQ/aisk.git` works
-- [ ] Add bash/zsh completion script (optional, stretch)
-- [ ] Final README polish with install instructions and examples
+- [x] Ensure `uv tool install .` works from local clone
+- [x] Ensure `uv tool install git+ssh://git@github.com/Ymx1ZQ/aisk.git` works
+- [ ] Add bash/zsh completion script (optional, stretch — deferred)
+- [x] Final README polish with install instructions and examples
+- [x] MIT LICENSE file added
