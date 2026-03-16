@@ -34,11 +34,16 @@ def main(argv: list[str] | None = None) -> int:
     command = positional[0]
 
     if command == "init":
-        print("aisk init — not yet implemented")
+        from aisk.config import init_config
+        for action in init_config():
+            print(action)
         return 0
 
     if command == "models":
-        print("aisk models — not yet implemented")
+        from aisk.config import load_config
+        cfg = load_config()
+        for alias, model_name in sorted(cfg.aliases.items()):
+            print(f"  {alias:12s} → {model_name}")
         return 0
 
     # Main flow: aisk <model> [message]

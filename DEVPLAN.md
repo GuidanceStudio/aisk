@@ -8,14 +8,14 @@
 - [x] `.gitignore` for Python
 - [x] Minimal `README.md` (already written)
 
-## M2: Configuration system (`~/.aisk/`)
+## M2: Configuration system (`~/.aisk/`) ✅
 
-- [ ] `src/aisk/config.py` — loads `~/.aisk/conf.toml` and `~/.aisk/.env`
+- [x] `src/aisk/config.py` — loads `~/.aisk/conf.toml` and `~/.aisk/.env`
   - Uses `tomllib` (3.11+) with `tomli` fallback
   - Uses `python-dotenv` to load `.env` into env vars
   - Provides typed config dataclass: `endpoint`, `api_key`, `aliases`
-- [ ] Default config template embedded in code (used by `aisk init`)
-- [ ] `aisk init` subcommand — creates `~/.aisk/` with `conf.toml` and `.env` templates
+- [x] Default config template embedded in code (used by `aisk init`)
+- [x] `aisk init` subcommand — creates `~/.aisk/` with `conf.toml` and `.env` templates
   - If files already exist, skip with message (never overwrite)
 
 ### Default `conf.toml` structure

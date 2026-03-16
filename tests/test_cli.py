@@ -17,14 +17,20 @@ def test_no_args_returns_2(capsys):
     assert main([]) == 2
 
 
-def test_init_subcommand(capsys):
+def test_init_subcommand(capsys, tmp_path, monkeypatch):
+    monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", tmp_path / "conf.toml")
+    monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
     assert main(["init"]) == 0
-    assert "init" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Created" in out
 
 
 def test_models_subcommand(capsys):
     assert main(["models"]) == 0
-    assert "models" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "ge3flash" in out
+    assert "google/gemini" in out
 
 
 def test_model_and_message(capsys):
