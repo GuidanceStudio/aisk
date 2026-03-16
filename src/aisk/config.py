@@ -230,58 +230,81 @@ def interactive_init(
     if print_fn is None:
         print_fn = print
 
+    # ANSI styling
+    _B = "\033[38;5;33m"   # blue
+    _C = "\033[36m"         # cyan
+    _G = "\033[32m"         # green
+    _D = "\033[2m"          # dim
+    _BD = "\033[1m"         # bold
+    _Y = "\033[33m"         # yellow
+    _R = "\033[0m"          # reset
+    _SEP = f"{_B}{'─' * 60}{_R}"
+
+    print_fn("")
+    print_fn(_SEP)
+    print_fn(f"  {_BD}aisk{_R} {_D}— setup{_R}")
+    print_fn(_SEP)
+
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     # --- conf.toml ---
+    print_fn(f"\n  {_C}{_BD}Endpoint{_R}")
+
     if CONFIG_FILE.exists():
         if auto:
-            pass  # auto-init: don't touch existing conf.toml
+            print_fn(f"  {_D}conf.toml exists — kept{_R}")
         else:
-            print_fn(f"\n  conf.toml already exists at {CONFIG_FILE}")
-            overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+            print_fn(f"  {_D}conf.toml already exists at {CONFIG_FILE}{_R}")
+            overwrite = input_fn(f"  {_Y}Overwrite? [y/N]{_R} ").strip().lower()
             if overwrite in ("y", "yes"):
                 endpoint = input_fn(
-                    f"  Endpoint [{DEFAULT_ENDPOINT}]: "
+                    f"  Endpoint [{_D}{DEFAULT_ENDPOINT}{_R}]: "
                 ).strip()
                 if not endpoint:
                     endpoint = DEFAULT_ENDPOINT
                 _write_conf(endpoint)
-                print_fn(f"  ✓ Wrote {CONFIG_FILE}")
+                print_fn(f"  {_G}✓{_R} Wrote {_D}{CONFIG_FILE}{_R}")
             else:
-                print_fn("  Skipped conf.toml")
+                print_fn(f"  {_D}skipped{_R}")
     else:
         endpoint = input_fn(
-            f"  Endpoint [{DEFAULT_ENDPOINT}]: "
+            f"  URL [{_D}{DEFAULT_ENDPOINT}{_R}]: "
         ).strip()
         if not endpoint:
             endpoint = DEFAULT_ENDPOINT
         _write_conf(endpoint)
-        print_fn(f"  ✓ Created {CONFIG_FILE}")
+        print_fn(f"  {_G}✓{_R} {endpoint}")
 
     # --- .env ---
+    print_fn(f"\n  {_C}{_BD}API Key{_R}")
+
     existing_key = _read_existing_key()
     if existing_key:
         if auto:
-            pass  # auto-init: don't touch existing key
+            print_fn(f"  {_D}key exists — kept{_R}")
         else:
-            print_fn(f"\n  API key already set: {_mask_key(existing_key)}")
-            overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+            print_fn(f"  {_D}current: {_mask_key(existing_key)}{_R}")
+            overwrite = input_fn(f"  {_Y}Overwrite? [y/N]{_R} ").strip().lower()
             if overwrite in ("y", "yes"):
-                new_key = input_fn("  AISK_API_KEY: ").strip()
+                new_key = input_fn(f"  AISK_API_KEY: ").strip()
                 if new_key:
                     _write_env(new_key)
-                    print_fn("  ✓ API key updated")
+                    print_fn(f"  {_G}✓{_R} updated")
                 else:
-                    print_fn("  Empty key — kept existing")
+                    print_fn(f"  {_D}empty — kept existing{_R}")
             else:
-                print_fn("  Skipped .env")
+                print_fn(f"  {_D}skipped{_R}")
     else:
-        new_key = input_fn("  AISK_API_KEY: ").strip()
+        new_key = input_fn(f"  AISK_API_KEY: ").strip()
         if new_key:
             _write_env(new_key)
-            print_fn(f"  ✓ Created {ENV_FILE}")
+            print_fn(f"  {_G}✓{_R} saved")
         else:
             _write_env("")
-            print_fn(f"  ✓ Created {ENV_FILE} (empty key — edit later)")
+            print_fn(f"  {_Y}!{_R} empty — edit {_D}~/.aisk/.env{_R} later")
 
-    print_fn("\n  ✓ Configuration saved to ~/.aisk/")
+    print_fn("")
+    print_fn(_SEP)
+    print_fn(f"  {_G}✓{_R} Config saved to {_BD}~/.aisk/{_R}")
+    print_fn(_SEP)
+    print_fn("")

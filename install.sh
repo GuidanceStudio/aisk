@@ -3,26 +3,45 @@ set -euo pipefail
 
 REPO="git+ssh://git@github.com/Ymx1ZQ/aisk.git"
 
+# Colors
+BLUE='\033[38;5;33m'
+CYAN='\033[36m'
+GREEN='\033[32m'
+DIM='\033[2m'
+BOLD='\033[1m'
+RESET='\033[0m'
+SEP="${BLUE}──────────────────────────────────────────────────────────────────────────────────────────────${RESET}"
+
+echo ""
+echo -e "${SEP}"
+echo -e "  ${BOLD}aisk${RESET} ${DIM}— installer${RESET}"
+echo -e "${SEP}"
+echo ""
+
 # Install uv if missing
 if ! command -v uv &>/dev/null; then
-    echo "uv not found — installing..."
+    echo -e "  ${CYAN}[1/2]${RESET} Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
+    echo ""
 fi
 
 # Install or upgrade
 if uv tool list 2>/dev/null | grep -q '^aisk '; then
-    echo "aisk found — upgrading..."
+    echo -e "  ${CYAN}[1/2]${RESET} Upgrading aisk..."
     uv tool install --force --upgrade "$REPO"
 else
-    echo "Installing aisk..."
+    echo -e "  ${CYAN}[1/2]${RESET} Installing aisk..."
     uv tool install "$REPO"
 fi
 
 echo ""
-echo "Running setup wizard..."
+echo -e "  ${CYAN}[2/2]${RESET} Setup"
 echo ""
 aisk init
 
 echo ""
-echo "Done! Run 'aisk --version' to verify."
+echo -e "${SEP}"
+echo -e "  ${GREEN}✓${RESET} All done! Run ${BOLD}aisk --version${RESET} to verify."
+echo -e "${SEP}"
+echo ""

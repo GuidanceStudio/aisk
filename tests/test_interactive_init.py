@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from aisk.config import (
@@ -13,6 +14,11 @@ def _make_input(*responses):
     """Create an input function that returns responses in order."""
     it = iter(responses)
     return lambda prompt: next(it)
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return re.sub(r"\033\[[0-9;]*m", "", text)
 
 
 def _setup(tmp_path, monkeypatch):
@@ -59,7 +65,8 @@ class TestInteractiveInitFreshSetup:
         assert (tmp_path / ".env").exists()
         assert "test-api-key" in (tmp_path / ".env").read_text()
         assert DEFAULT_ENDPOINT in (tmp_path / "conf.toml").read_text()
-        assert any("Configuration saved" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("Config saved" in m for m in plain)
 
     def test_custom_endpoint(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
@@ -80,7 +87,8 @@ class TestInteractiveInitFreshSetup:
             print_fn=lambda msg: output.append(msg),
         )
         assert (tmp_path / ".env").exists()
-        assert any("empty key" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("empty" in m for m in plain)
 
 
 class TestInteractiveInitExistingConfig:
@@ -95,8 +103,8 @@ class TestInteractiveInitExistingConfig:
         )
         assert (tmp_path / "conf.toml").read_text() == "existing"
         assert "old-key" in (tmp_path / ".env").read_text()
-        assert any("Skipped conf.toml" in m for m in output)
-        assert any("Skipped .env" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("skipped" in m for m in plain)
 
     def test_overwrite_conf(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
@@ -108,7 +116,8 @@ class TestInteractiveInitExistingConfig:
             print_fn=lambda msg: output.append(msg),
         )
         assert DEFAULT_ENDPOINT in (tmp_path / "conf.toml").read_text()
-        assert any("Wrote" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("Wrote" in m for m in plain)
 
     def test_overwrite_env(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
@@ -120,7 +129,8 @@ class TestInteractiveInitExistingConfig:
             print_fn=lambda msg: output.append(msg),
         )
         assert "new-key" in (tmp_path / ".env").read_text()
-        assert any("updated" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("updated" in m for m in plain)
 
     def test_overwrite_env_empty_keeps_existing(self, tmp_path, monkeypatch):
         _setup(tmp_path, monkeypatch)
@@ -132,7 +142,8 @@ class TestInteractiveInitExistingConfig:
             print_fn=lambda msg: output.append(msg),
         )
         assert "old-key" in (tmp_path / ".env").read_text()
-        assert any("kept existing" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert any("kept existing" in m for m in plain)
 
 
 class TestInteractiveInitAutoMode:
@@ -148,13 +159,10 @@ class TestInteractiveInitAutoMode:
             print_fn=lambda msg: output.append(msg),
             auto=True,
         )
-        # conf.toml untouched
         assert (tmp_path / "conf.toml").read_text() == "existing-conf"
-        # key written
         assert "new-api-key" in (tmp_path / ".env").read_text()
-        # no "Overwrite?" or "Skipped" messages
-        assert not any("Overwrite" in m for m in output)
-        assert not any("Skipped conf.toml" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert not any("Overwrite" in m for m in plain)
 
     def test_auto_existing_conf_existing_key(self, tmp_path, monkeypatch):
         """conf.toml + key both exist → nothing asked, nothing changed."""
@@ -169,7 +177,8 @@ class TestInteractiveInitAutoMode:
         )
         assert (tmp_path / "conf.toml").read_text() == "existing-conf"
         assert "old-key" in (tmp_path / ".env").read_text()
-        assert not any("Overwrite" in m for m in output)
+        plain = [_strip_ansi(m) for m in output]
+        assert not any("Overwrite" in m for m in plain)
 
     def test_auto_fresh_install(self, tmp_path, monkeypatch):
         """Nothing exists → asks endpoint + key (same as normal)."""
@@ -189,7 +198,6 @@ class TestInteractiveInitAutoMode:
         _setup(tmp_path, monkeypatch)
         (tmp_path / "conf.toml").write_text("existing")
         (tmp_path / ".env").write_text("AISK_API_KEY=old-key\n")
-        output = []
         prompts = []
 
         def capturing_input(*responses):
@@ -201,6 +209,7 @@ class TestInteractiveInitAutoMode:
 
         interactive_init(
             input_fn=capturing_input("n", "n"),  # skip both
-            print_fn=lambda msg: output.append(msg),
+            print_fn=lambda msg: None,
         )
-        assert any("Overwrite" in p for p in prompts)
+        plain = [_strip_ansi(p) for p in prompts]
+        assert any("Overwrite" in p for p in plain)
