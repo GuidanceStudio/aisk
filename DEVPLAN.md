@@ -277,3 +277,32 @@ Il flusso attuale ha due problemi:
 - [x]Test: auto-init con conf.toml esistente + key mancante → chiede solo la key, non tocca conf.toml
 - [x]Test: `aisk init` esplicito con conf.toml esistente → chiede overwrite come prima
 - [x]Test: install.sh contiene `aisk init` alla fine
+
+## M16: Auto-install completions + refresh ✅
+
+Le shell completions esistono (`aisk completions bash/zsh`) ma l'utente deve aggiungerle manualmente al proprio `.bashrc`/`.zshrc`. Inoltre, dopo aver modificato gli alias in `conf.toml`, serve un modo per aggiornare le completions nella shell corrente.
+
+### Task
+
+#### A. `aisk completions install` — installa le completions nel file rc della shell
+
+- [x] Detecta la shell corrente (`$SHELL`)
+- [x] Appende `eval "$(aisk completions bash)"` a `~/.bashrc` (o `zsh` a `~/.zshrc`)
+- [x] Se la riga esiste già, non duplicarla
+- [x] Stampa messaggio con istruzioni: "Completions installed. Run `source ~/.bashrc` or open a new terminal."
+
+#### B. `install.sh` — chiama `aisk completions install`
+
+- [x] Aggiungere `aisk completions install` dopo `aisk init` nell'installer
+
+#### C. `aisk completions refresh` — rigenera lo script per la shell corrente
+
+- [x] Stampa lo script di completions aggiornato (come `aisk completions bash/zsh` ma auto-detectando la shell)
+- [x] L'utente lo usa con: `eval "$(aisk completions refresh)"`
+- [x] Documentare nel README
+
+#### D. Test
+
+- [x] Test: `aisk completions install` appende la riga corretta
+- [x] Test: `aisk completions install` non duplica se già presente
+- [x] Test: `aisk completions refresh` produce output valido

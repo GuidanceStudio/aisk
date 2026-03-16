@@ -4,7 +4,7 @@ import sys
 from aisk import __version__
 from aisk.aliases import resolve_model
 from aisk.client import stream_chat
-from aisk.completions import generate_bash, generate_zsh
+from aisk.completions import generate_bash, generate_refresh, generate_zsh, install_completions
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
 from aisk.output import render_quiet, render_verbose
 
@@ -47,13 +47,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if command == "completions":
-        shell = positional[1] if len(positional) > 1 else None
-        if shell == "bash":
+        sub = positional[1] if len(positional) > 1 else None
+        if sub == "bash":
             print(generate_bash())
-        elif shell == "zsh":
+        elif sub == "zsh":
             print(generate_zsh())
+        elif sub == "install":
+            print(install_completions())
+        elif sub == "refresh":
+            print(generate_refresh())
         else:
-            print("Usage: aisk completions <bash|zsh>", file=sys.stderr)
+            print("Usage: aisk completions <bash|zsh|install|refresh>", file=sys.stderr)
             return 2
         return 0
 

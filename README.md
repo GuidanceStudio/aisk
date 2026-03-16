@@ -133,7 +133,17 @@ and Partition tolerance...
 
 ## Shell Completions
 
-Tab-completion for model aliases and subcommands.
+Tab-completion for model aliases and subcommands. Installed automatically by `install.sh`.
+
+```bash
+# Install manually (appends to ~/.bashrc or ~/.zshrc)
+aisk completions install
+
+# Refresh after changing aliases in conf.toml
+eval "$(aisk completions refresh)"
+```
+
+Or add manually to your shell rc file:
 
 ```bash
 # Bash — add to ~/.bashrc

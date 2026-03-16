@@ -20,7 +20,7 @@ echo ""
 
 # Install uv if missing
 if ! command -v uv &>/dev/null; then
-    echo -e "  ${CYAN}[1/2]${RESET} Installing uv..."
+    echo -e "  ${CYAN}[1/3]${RESET} Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
     echo ""
@@ -28,17 +28,21 @@ fi
 
 # Install or upgrade
 if uv tool list 2>/dev/null | grep -q '^aisk '; then
-    echo -e "  ${CYAN}[1/2]${RESET} Upgrading aisk..."
+    echo -e "  ${CYAN}[1/3]${RESET} Upgrading aisk..."
     uv tool install --force --upgrade "$REPO"
 else
-    echo -e "  ${CYAN}[1/2]${RESET} Installing aisk..."
+    echo -e "  ${CYAN}[1/3]${RESET} Installing aisk..."
     uv tool install "$REPO"
 fi
 
 echo ""
-echo -e "  ${CYAN}[2/2]${RESET} Setup"
+echo -e "  ${CYAN}[2/3]${RESET} Setup"
 echo ""
 aisk init
+
+echo ""
+echo -e "  ${CYAN}[3/3]${RESET} Shell completions"
+echo -e "  ${DIM}$(aisk completions install)${RESET}"
 
 echo ""
 echo -e "${SEP}"
