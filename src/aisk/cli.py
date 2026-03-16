@@ -2,6 +2,10 @@ import argparse
 import sys
 
 from aisk import __version__
+from aisk.aliases import resolve_model
+from aisk.client import stream_chat
+from aisk.config import init_config, load_config
+from aisk.output import render_quiet, render_verbose
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,20 +38,18 @@ def main(argv: list[str] | None = None) -> int:
     command = positional[0]
 
     if command == "init":
-        from aisk.config import init_config
         for action in init_config():
             print(action)
         return 0
 
     if command == "models":
-        from aisk.config import load_config
         cfg = load_config()
         for alias, model_name in sorted(cfg.aliases.items()):
             print(f"  {alias:12s} → {model_name}")
         return 0
 
     # Main flow: aisk <model> [message]
-    model = command
+    model_input = command
     message: str | None = positional[1] if len(positional) > 1 else None
 
     if message is None:
@@ -59,10 +61,19 @@ def main(argv: list[str] | None = None) -> int:
             print("Error: empty stdin.", file=sys.stderr)
             return 2
 
-    print(f"[aisk] model={model} quiet={parsed.quiet}")
-    print(f"[aisk] message={message!r}")
-    print("[aisk] not yet wired — see M4-M6")
-    return 0
+    cfg = load_config()
+
+    if not cfg.api_key:
+        print("Error: AISK_API_KEY not set. Run 'aisk init' and edit ~/.aisk/.env", file=sys.stderr)
+        return 1
+
+    model = resolve_model(model_input, cfg.aliases)
+    events = stream_chat(cfg.endpoint, cfg.api_key, model, message)
+
+    if parsed.quiet:
+        return render_quiet(events)
+    else:
+        return render_verbose(model, message, events)
 
 
 if __name__ == "__main__":

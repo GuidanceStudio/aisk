@@ -96,17 +96,17 @@ AISK_API_KEY=
     - Only content tokens (skip reasoning)
     - Suitable for piping (`aisk -q model "msg" | pbcopy`)
 
-## M6: CLI wiring
+## M6: CLI wiring ✅
 
-- [ ] Wire everything together in `cli.py`
+- [x] Wire everything together in `cli.py`
   - `aisk <model> <message>` — main flow (verbose)
   - `aisk -q <model> <message>` — quiet mode
   - `aisk <model>` (no message) — read from stdin
   - `aisk init` — config setup
   - `aisk models` — list aliases from config
   - `aisk --version` — print version
-- [ ] Stdin support: if no message arg and stdin is not a TTY, read from stdin
-- [ ] Exit codes: 0 success, 1 API/config error, 2 usage error
+- [x] Stdin support: if no message arg and stdin is not a TTY, read from stdin
+- [x] Exit codes: 0 success, 1 API/config error, 2 usage error
 
 ## M7: Packaging and distribution
 
