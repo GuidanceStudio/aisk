@@ -66,9 +66,9 @@ l4mav = "meta-llama/llama-4-maverick"
 AISK_API_KEY=
 ```
 
-## M3: Model alias resolution
+## M3: Model alias resolution ✅
 
-- [ ] `src/aisk/aliases.py` — resolves alias → full model name
+- [x] `src/aisk/aliases.py` — resolves alias → full model name
   - Lookup in `conf.toml` `[aliases]` section
   - If no match, pass through as-is (allows `aisk perplexity/sonar "query"`)
   - No prefix stripping needed — user writes what the API expects
