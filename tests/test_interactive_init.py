@@ -133,3 +133,74 @@ class TestInteractiveInitExistingConfig:
         )
         assert "old-key" in (tmp_path / ".env").read_text()
         assert any("kept existing" in m for m in output)
+
+
+class TestInteractiveInitAutoMode:
+    """auto=True: only ask for what's missing, skip overwrite prompts."""
+
+    def test_auto_existing_conf_missing_key(self, tmp_path, monkeypatch):
+        """conf.toml exists, key missing → asks only for key, doesn't touch conf."""
+        _setup(tmp_path, monkeypatch)
+        (tmp_path / "conf.toml").write_text("existing-conf")
+        output = []
+        interactive_init(
+            input_fn=_make_input("new-api-key"),  # only key prompt
+            print_fn=lambda msg: output.append(msg),
+            auto=True,
+        )
+        # conf.toml untouched
+        assert (tmp_path / "conf.toml").read_text() == "existing-conf"
+        # key written
+        assert "new-api-key" in (tmp_path / ".env").read_text()
+        # no "Overwrite?" or "Skipped" messages
+        assert not any("Overwrite" in m for m in output)
+        assert not any("Skipped conf.toml" in m for m in output)
+
+    def test_auto_existing_conf_existing_key(self, tmp_path, monkeypatch):
+        """conf.toml + key both exist → nothing asked, nothing changed."""
+        _setup(tmp_path, monkeypatch)
+        (tmp_path / "conf.toml").write_text("existing-conf")
+        (tmp_path / ".env").write_text("AISK_API_KEY=old-key\n")
+        output = []
+        interactive_init(
+            input_fn=_make_input(),  # no prompts expected
+            print_fn=lambda msg: output.append(msg),
+            auto=True,
+        )
+        assert (tmp_path / "conf.toml").read_text() == "existing-conf"
+        assert "old-key" in (tmp_path / ".env").read_text()
+        assert not any("Overwrite" in m for m in output)
+
+    def test_auto_fresh_install(self, tmp_path, monkeypatch):
+        """Nothing exists → asks endpoint + key (same as normal)."""
+        _setup(tmp_path, monkeypatch)
+        output = []
+        interactive_init(
+            input_fn=_make_input("", "fresh-key"),  # default endpoint, key
+            print_fn=lambda msg: output.append(msg),
+            auto=True,
+        )
+        assert (tmp_path / "conf.toml").exists()
+        assert DEFAULT_ENDPOINT in (tmp_path / "conf.toml").read_text()
+        assert "fresh-key" in (tmp_path / ".env").read_text()
+
+    def test_explicit_init_still_asks_overwrite(self, tmp_path, monkeypatch):
+        """auto=False (default, explicit aisk init) → asks overwrite as before."""
+        _setup(tmp_path, monkeypatch)
+        (tmp_path / "conf.toml").write_text("existing")
+        (tmp_path / ".env").write_text("AISK_API_KEY=old-key\n")
+        output = []
+        prompts = []
+
+        def capturing_input(*responses):
+            it = iter(responses)
+            def fn(prompt):
+                prompts.append(prompt)
+                return next(it)
+            return fn
+
+        interactive_init(
+            input_fn=capturing_input("n", "n"),  # skip both
+            print_fn=lambda msg: output.append(msg),
+        )
+        assert any("Overwrite" in p for p in prompts)

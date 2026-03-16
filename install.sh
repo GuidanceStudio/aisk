@@ -20,4 +20,9 @@ else
 fi
 
 echo ""
+echo "Running setup wizard..."
+echo ""
+aisk init
+
+echo ""
 echo "Done! Run 'aisk --version' to verify."

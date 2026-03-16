@@ -76,7 +76,7 @@ def test_auto_init_first_run(capsys, monkeypatch):
         with patch("aisk.config.sys.stdin") as mock_stdin:
             mock_stdin.isatty.return_value = True
 
-            def fake_init(input_fn=None, print_fn=None):
+            def fake_init(input_fn=None, print_fn=None, *, auto=False):
                 # Simulate wizard writing config files
                 (p / "conf.toml").write_text('[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n[aliases]\n')
                 (p / ".env").write_text("AISK_API_KEY=test-wizard-key\n")

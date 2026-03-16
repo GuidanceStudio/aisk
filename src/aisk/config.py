@@ -148,7 +148,7 @@ def ensure_config() -> Config:
     # Config or API key is missing — try auto-init
     if sys.stdin.isatty():
         print("\n  First run detected — launching setup wizard...\n")
-        interactive_init()
+        interactive_init(auto=True)
         # Reload after wizard
         cfg = load_config()
         if cfg.api_key:
@@ -214,12 +214,16 @@ def _write_conf(endpoint: str) -> None:
 def interactive_init(
     input_fn=None,
     print_fn=None,
+    *,
+    auto: bool = False,
 ) -> None:
     """Interactive setup wizard for ~/.aisk/ configuration.
 
     Args:
         input_fn: Callable for user input (default: builtins.input).
         print_fn: Callable for output (default: builtins.print).
+        auto: When True (called from ensure_config), skip overwrite prompts
+              and only ask for what's missing.
     """
     if input_fn is None:
         input_fn = input
@@ -230,18 +234,21 @@ def interactive_init(
 
     # --- conf.toml ---
     if CONFIG_FILE.exists():
-        print_fn(f"\n  conf.toml already exists at {CONFIG_FILE}")
-        overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
-        if overwrite in ("y", "yes"):
-            endpoint = input_fn(
-                f"  Endpoint [{DEFAULT_ENDPOINT}]: "
-            ).strip()
-            if not endpoint:
-                endpoint = DEFAULT_ENDPOINT
-            _write_conf(endpoint)
-            print_fn(f"  ✓ Wrote {CONFIG_FILE}")
+        if auto:
+            pass  # auto-init: don't touch existing conf.toml
         else:
-            print_fn("  Skipped conf.toml")
+            print_fn(f"\n  conf.toml already exists at {CONFIG_FILE}")
+            overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+            if overwrite in ("y", "yes"):
+                endpoint = input_fn(
+                    f"  Endpoint [{DEFAULT_ENDPOINT}]: "
+                ).strip()
+                if not endpoint:
+                    endpoint = DEFAULT_ENDPOINT
+                _write_conf(endpoint)
+                print_fn(f"  ✓ Wrote {CONFIG_FILE}")
+            else:
+                print_fn("  Skipped conf.toml")
     else:
         endpoint = input_fn(
             f"  Endpoint [{DEFAULT_ENDPOINT}]: "
@@ -254,17 +261,20 @@ def interactive_init(
     # --- .env ---
     existing_key = _read_existing_key()
     if existing_key:
-        print_fn(f"\n  API key already set: {_mask_key(existing_key)}")
-        overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
-        if overwrite in ("y", "yes"):
-            new_key = input_fn("  AISK_API_KEY: ").strip()
-            if new_key:
-                _write_env(new_key)
-                print_fn("  ✓ API key updated")
-            else:
-                print_fn("  Empty key — kept existing")
+        if auto:
+            pass  # auto-init: don't touch existing key
         else:
-            print_fn("  Skipped .env")
+            print_fn(f"\n  API key already set: {_mask_key(existing_key)}")
+            overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+            if overwrite in ("y", "yes"):
+                new_key = input_fn("  AISK_API_KEY: ").strip()
+                if new_key:
+                    _write_env(new_key)
+                    print_fn("  ✓ API key updated")
+                else:
+                    print_fn("  Empty key — kept existing")
+            else:
+                print_fn("  Skipped .env")
     else:
         new_key = input_fn("  AISK_API_KEY: ").strip()
         if new_key:

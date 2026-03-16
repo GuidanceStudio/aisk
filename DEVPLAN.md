@@ -244,3 +244,36 @@ Allineare il README allo stato attuale del progetto.
 - [x] Rimuovere la necessità di `aisk init` esplicito dalla sezione Setup — spiegare che il wizard parte automaticamente al primo run
 - [x] Mantenere `aisk init` documentato come comando per riconfigurare
 - [x] Aggiornare sezione Usage con il flusso primo-run
+
+## M15: Installer lancia il wizard + wizard più smart ✅
+
+Il flusso attuale ha due problemi:
+1. `install.sh` non lancia il wizard — l'utente deve aspettare il primo `aisk` per configurare
+2. Quando il wizard parte automaticamente (auto-init) e `conf.toml` esiste già (ma manca la API key), chiede "Overwrite conf.toml?" — confondendo l'utente. Il vero problema è la key mancante, non il conf.toml.
+
+### Modifiche
+
+#### A. `install.sh` — lanciare `aisk init` dopo l'installazione
+
+- [x] Aggiungere `aisk init` alla fine di `install.sh`, dopo l'install/upgrade
+- [x]Il wizard parte direttamente al termine dell'installazione, senza aspettare il primo utilizzo
+
+#### B. `interactive_init()` — comportamento più intelligente nel contesto auto-init
+
+- [x]Aggiungere parametro `auto` (default `False`) a `interactive_init()`
+- [x]Quando `auto=True` (chiamato da `ensure_config()`):
+  - Se `conf.toml` esiste → **non chiedere** di sovrascriverlo, saltalo silenziosamente
+  - Se la API key esiste → **non chiedere** di sovrascriverla, saltala silenziosamente
+  - Chiedere solo ciò che manca (tipicamente: solo la API key)
+- [x]Quando `auto=False` (chiamato da `aisk init` esplicito):
+  - Comportamento attuale invariato — chiede conferma per sovrascrivere tutto
+
+#### C. `ensure_config()` — passare `auto=True`
+
+- [x]Modificare la chiamata in `ensure_config()`: `interactive_init(auto=True)`
+
+#### D. Test
+
+- [x]Test: auto-init con conf.toml esistente + key mancante → chiede solo la key, non tocca conf.toml
+- [x]Test: `aisk init` esplicito con conf.toml esistente → chiede overwrite come prima
+- [x]Test: install.sh contiene `aisk init` alla fine
