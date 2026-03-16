@@ -179,3 +179,68 @@ Generare uno script di completion che legge gli alias da `~/.aisk/conf.toml` a r
   - zsh: `eval "$(aisk completions zsh)"` in `.zshrc`
 - [x] Test: verificare che gli script generati contengano gli alias corretti
 - [x] Rimuovere la nota "deferred" da M7
+
+## M11: Join messaggi senza virgolette
+
+Bug pratico: `aisk ge3flash what is the CAP theorem` (senza quote) cattura solo "what" come messaggio.
+
+### Task
+
+- [ ] In `cli.py`, joinare tutti gli args da posizione 1 in poi come messaggio: `" ".join(positional[1:])`
+- [ ] Se il risultato è vuoto, fallback a stdin come prima
+- [ ] Aggiornare i test CLI per coprire il caso multi-word senza quote
+- [ ] Aggiornare README con esempio senza virgolette
+
+## M12: Auto-init al primo run
+
+Eliminare la necessità di `aisk init` esplicito. Al primo utilizzo (qualsiasi comando che richiede la config), se manca `~/.aisk/` o la API key è vuota, lanciare il wizard interattivo automaticamente.
+
+### Flusso
+
+1. L'utente installa con `uv tool install .`
+2. Fa `aisk ge3flash "ciao"` — primo run
+3. Rileva che `~/.aisk/` non esiste o `AISK_API_KEY` è vuoto
+4. Se TTY → lancia `interactive_init()` automaticamente, poi procede con la query
+5. Se non TTY → errore con messaggio "Run 'aisk init' first"
+
+### Task
+
+- [ ] Estrarre la logica di check config in una funzione `ensure_config()` in `config.py`
+  - Ritorna `Config` se tutto ok
+  - Se manca config/key e TTY → lancia wizard, poi ricarica e ritorna
+  - Se manca config/key e non TTY → raise/return errore
+- [ ] Usare `ensure_config()` in `cli.py` al posto di `load_config()` + check manuale della key
+- [ ] `aisk init` resta disponibile per riconfigurare manualmente
+- [ ] Test: primo run senza config lancia wizard (mock), poi procede
+
+## M13: Migliorare `aisk models`
+
+Rendere l'output di `aisk models` più leggibile.
+
+### Task
+
+- [ ] Raggruppare alias per provider (Google, OpenAI, Anthropic, Perplexity, etc.) basandosi sul prefisso del model name (prima di `/`)
+- [ ] Formattare con header di sezione e colonne allineate
+- [ ] Output esempio:
+  ```
+  Google
+    ge31pro      google/gemini-3.1-pro-preview
+    ge3flash     google/gemini-2.5-flash-preview
+
+  Perplexity
+    s            perplexity/sonar
+    sps          perplexity/sonar-pro-search
+  ```
+- [ ] Test: verificare raggruppamento e formattazione
+
+## M14: Aggiornamento README
+
+Allineare il README allo stato attuale del progetto.
+
+### Task
+
+- [ ] Aggiungere esempio d'uso senza virgolette (`aisk ge3flash what is the CAP theorem`)
+- [ ] Aggiungere Perplexity alias (`s`, `sps`) negli esempi
+- [ ] Rimuovere la necessità di `aisk init` esplicito dalla sezione Setup — spiegare che il wizard parte automaticamente al primo run
+- [ ] Mantenere `aisk init` documentato come comando per riconfigurare
+- [ ] Aggiornare sezione Usage con il flusso primo-run
