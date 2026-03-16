@@ -82,9 +82,9 @@ AISK_API_KEY=
   - Yields typed events: `ReasoningChunk`, `ContentChunk`, `UsageInfo`, `ErrorInfo`
   - Handles error JSON responses (non-stream)
 
-## M5: Output formatting
+## M5: Output formatting ✅
 
-- [ ] `src/aisk/output.py` — two formatters
+- [x] `src/aisk/output.py` — two formatters
   - **Verbose (default):** replicates current `a+ask` output
     - Header with model + user message
     - `THINKING` section (dim italic) for reasoning tokens
