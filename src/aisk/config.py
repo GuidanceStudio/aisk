@@ -40,6 +40,9 @@ DEFAULT_ALIASES: dict[str, str] = {
     # Qwen
     "qwen35p": "qwen/qwen3.5-coder-plus",
     "qwen35": "qwen/qwen3.5-coder",
+    # Perplexity
+    "s": "perplexity/sonar",
+    "sps": "perplexity/sonar-pro-search",
     # Other
     "m25": "minimax/minimax-m1-80k",
     "glm5": "zhipu/glm-5-plus",
@@ -79,6 +82,10 @@ dsr1 = "deepseek/deepseek-r1"
 # Qwen
 qwen35p = "qwen/qwen3.5-coder-plus"
 qwen35 = "qwen/qwen3.5-coder"
+
+# Perplexity
+s = "perplexity/sonar"
+sps = "perplexity/sonar-pro-search"
 
 # Other
 m25 = "minimax/minimax-m1-80k"

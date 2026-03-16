@@ -16,6 +16,11 @@ def test_custom_alias():
     assert resolve_model("other", custom) == "other"
 
 
+def test_perplexity_aliases():
+    assert resolve_model("s", DEFAULT_ALIASES) == "perplexity/sonar"
+    assert resolve_model("sps", DEFAULT_ALIASES) == "perplexity/sonar-pro-search"
+
+
 def test_all_default_aliases_resolve():
     for alias, full_name in DEFAULT_ALIASES.items():
         assert resolve_model(alias, DEFAULT_ALIASES) == full_name

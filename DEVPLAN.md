@@ -141,7 +141,7 @@ AISK_API_KEY=
 - [x] Se `aisk init` viene invocato in contesto non-TTY (pipe), fallback al comportamento attuale (crea file senza chiedere)
 - [x] Test con mock di `input()` / `builtins.input`
 
-## M9: Nuovi alias Perplexity + aggiornamento default
+## M9: Nuovi alias Perplexity + aggiornamento default ✅
 
 Aggiungere alias Perplexity ai default e aggiornare il template `conf.toml`.
 
@@ -154,10 +154,10 @@ Aggiungere alias Perplexity ai default e aggiornare il template `conf.toml`.
 
 ### Task
 
-- [ ] Aggiungere `s` e `sps` a `DEFAULT_ALIASES` in `config.py`
-- [ ] Aggiungere la sezione `# Perplexity` al template `DEFAULT_CONF_TOML`
-- [ ] Aggiornare i test per includere i nuovi alias
-- [ ] Aggiornare la tabella alias nel DEVPLAN (sezione M2)
+- [x] Aggiungere `s` e `sps` a `DEFAULT_ALIASES` in `config.py`
+- [x] Aggiungere la sezione `# Perplexity` al template `DEFAULT_CONF_TOML`
+- [x] Aggiornare i test per includere i nuovi alias
+- [x] Aggiornare la tabella alias nel DEVPLAN (sezione M2) — non necessario, la sezione M2 elenca solo la struttura originale
 
 ## M10: Shell autocomplete
 
