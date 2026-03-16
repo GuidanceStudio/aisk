@@ -40,9 +40,9 @@ def test_models_subcommand(capsys):
     assert "google/gemini" in out
 
 
-def test_no_api_key(capsys, monkeypatch):
+def test_no_api_key_non_tty(capsys, monkeypatch):
+    """Non-TTY with no API key → error with helpful message."""
     monkeypatch.delenv("AISK_API_KEY", raising=False)
-    # Use a tmp config dir with no .env
     import tempfile
     from pathlib import Path
     with tempfile.TemporaryDirectory() as d:
@@ -50,8 +50,39 @@ def test_no_api_key(capsys, monkeypatch):
         monkeypatch.setattr("aisk.config.CONFIG_DIR", p)
         monkeypatch.setattr("aisk.config.CONFIG_FILE", p / "conf.toml")
         monkeypatch.setattr("aisk.config.ENV_FILE", p / ".env")
-        assert main(["ge3flash", "hello"]) == 1
+        with patch("aisk.config.sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = False
+            assert main(["ge3flash", "hello"]) == 1
     assert "AISK_API_KEY" in capsys.readouterr().err
+
+
+def test_auto_init_first_run(capsys, monkeypatch):
+    """First run with no config + TTY → auto-launches wizard, then proceeds."""
+    monkeypatch.delenv("AISK_API_KEY", raising=False)
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d)
+        monkeypatch.setattr("aisk.config.CONFIG_DIR", p)
+        monkeypatch.setattr("aisk.config.CONFIG_FILE", p / "conf.toml")
+        monkeypatch.setattr("aisk.config.ENV_FILE", p / ".env")
+
+        # Mock TTY + interactive_init that writes a key
+        with patch("aisk.config.sys.stdin") as mock_stdin:
+            mock_stdin.isatty.return_value = True
+
+            def fake_init(input_fn=None, print_fn=None):
+                # Simulate wizard writing config files
+                (p / "conf.toml").write_text('[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n[aliases]\n')
+                (p / ".env").write_text("AISK_API_KEY=test-wizard-key\n")
+
+            monkeypatch.setattr("aisk.config.interactive_init", fake_init)
+
+            mock = _mock_stream(ContentChunk("wizard-reply"))
+            with patch("aisk.cli.stream_chat", mock):
+                assert main(["ge3flash", "hello"]) == 0
+
+    assert "wizard-reply" in capsys.readouterr().out
 
 
 def test_model_and_message_verbose(capsys, monkeypatch):

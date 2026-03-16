@@ -191,7 +191,7 @@ Bug pratico: `aisk ge3flash what is the CAP theorem` (senza quote) cattura solo 
 - [x] Aggiornare i test CLI per coprire il caso multi-word senza quote
 - [x] Aggiornare README con esempio senza virgolette
 
-## M12: Auto-init al primo run
+## M12: Auto-init al primo run ✅
 
 Eliminare la necessità di `aisk init` esplicito. Al primo utilizzo (qualsiasi comando che richiede la config), se manca `~/.aisk/` o la API key è vuota, lanciare il wizard interattivo automaticamente.
 
@@ -205,13 +205,13 @@ Eliminare la necessità di `aisk init` esplicito. Al primo utilizzo (qualsiasi c
 
 ### Task
 
-- [ ] Estrarre la logica di check config in una funzione `ensure_config()` in `config.py`
+- [x] Estrarre la logica di check config in una funzione `ensure_config()` in `config.py`
   - Ritorna `Config` se tutto ok
   - Se manca config/key e TTY → lancia wizard, poi ricarica e ritorna
   - Se manca config/key e non TTY → raise/return errore
-- [ ] Usare `ensure_config()` in `cli.py` al posto di `load_config()` + check manuale della key
-- [ ] `aisk init` resta disponibile per riconfigurare manualmente
-- [ ] Test: primo run senza config lancia wizard (mock), poi procede
+- [x] Usare `ensure_config()` in `cli.py` al posto di `load_config()` + check manuale della key
+- [x] `aisk init` resta disponibile per riconfigurare manualmente
+- [x] Test: primo run senza config lancia wizard (mock), poi procede
 
 ## M13: Migliorare `aisk models`
 

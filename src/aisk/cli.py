@@ -5,7 +5,7 @@ from aisk import __version__
 from aisk.aliases import resolve_model
 from aisk.client import stream_chat
 from aisk.completions import generate_bash, generate_zsh
-from aisk.config import init_config, interactive_init, load_config
+from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
 from aisk.output import render_quiet, render_verbose
 
 
@@ -76,10 +76,10 @@ def main(argv: list[str] | None = None) -> int:
             print("Error: empty stdin.", file=sys.stderr)
             return 2
 
-    cfg = load_config()
-
-    if not cfg.api_key:
-        print("Error: AISK_API_KEY not set. Run 'aisk init' and edit ~/.aisk/.env", file=sys.stderr)
+    try:
+        cfg = ensure_config()
+    except ConfigError as e:
+        print(f"Error: {e}", file=sys.stderr)
         return 1
 
     model = resolve_model(model_input, cfg.aliases)

@@ -130,6 +130,33 @@ def load_config() -> Config:
     return cfg
 
 
+class ConfigError(Exception):
+    """Raised when config cannot be loaded and auto-init is not possible."""
+
+
+def ensure_config() -> Config:
+    """Load config, auto-launching the setup wizard if needed.
+
+    - If config/key is missing and stdin is a TTY → run interactive_init(), then reload.
+    - If config/key is missing and stdin is NOT a TTY → raise ConfigError.
+    - Otherwise → return the loaded Config.
+    """
+    cfg = load_config()
+    if cfg.api_key:
+        return cfg
+
+    # Config or API key is missing — try auto-init
+    if sys.stdin.isatty():
+        print("\n  First run detected — launching setup wizard...\n")
+        interactive_init()
+        # Reload after wizard
+        cfg = load_config()
+        if cfg.api_key:
+            return cfg
+
+    raise ConfigError("AISK_API_KEY not set. Run 'aisk init' and edit ~/.aisk/.env")
+
+
 def init_config() -> list[str]:
     """Create ~/.aisk/ with default files (non-interactive). Returns list of actions taken."""
     actions: list[str] = []
