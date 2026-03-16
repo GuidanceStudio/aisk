@@ -124,7 +124,7 @@ def load_config() -> Config:
 
 
 def init_config() -> list[str]:
-    """Create ~/.aisk/ with default files. Returns list of actions taken."""
+    """Create ~/.aisk/ with default files (non-interactive). Returns list of actions taken."""
     actions: list[str] = []
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -141,3 +141,103 @@ def init_config() -> list[str]:
         actions.append(f"Created {ENV_FILE}")
 
     return actions
+
+
+def _mask_key(key: str) -> str:
+    """Mask an API key for display, showing first 6 and last 4 chars."""
+    if len(key) <= 10:
+        return "****"
+    return f"{key[:6]}...{key[-4:]}"
+
+
+def _read_existing_key() -> str:
+    """Read the current AISK_API_KEY from the .env file, if any."""
+    if not ENV_FILE.exists():
+        return ""
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("AISK_API_KEY=") and not line.startswith("#"):
+            return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
+def _write_env(api_key: str) -> None:
+    """Write the .env file with the given API key."""
+    ENV_FILE.write_text(f"AISK_API_KEY={api_key}\n")
+
+
+def _write_conf(endpoint: str) -> None:
+    """Write conf.toml with the given endpoint and default aliases."""
+    content = DEFAULT_CONF_TOML
+    if endpoint != DEFAULT_ENDPOINT:
+        content = content.replace(
+            f'endpoint = "{DEFAULT_ENDPOINT}"',
+            f'endpoint = "{endpoint}"',
+        )
+    CONFIG_FILE.write_text(content)
+
+
+def interactive_init(
+    input_fn=None,
+    print_fn=None,
+) -> None:
+    """Interactive setup wizard for ~/.aisk/ configuration.
+
+    Args:
+        input_fn: Callable for user input (default: builtins.input).
+        print_fn: Callable for output (default: builtins.print).
+    """
+    if input_fn is None:
+        input_fn = input
+    if print_fn is None:
+        print_fn = print
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    # --- conf.toml ---
+    if CONFIG_FILE.exists():
+        print_fn(f"\n  conf.toml already exists at {CONFIG_FILE}")
+        overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+        if overwrite in ("y", "yes"):
+            endpoint = input_fn(
+                f"  Endpoint [{DEFAULT_ENDPOINT}]: "
+            ).strip()
+            if not endpoint:
+                endpoint = DEFAULT_ENDPOINT
+            _write_conf(endpoint)
+            print_fn(f"  ✓ Wrote {CONFIG_FILE}")
+        else:
+            print_fn("  Skipped conf.toml")
+    else:
+        endpoint = input_fn(
+            f"  Endpoint [{DEFAULT_ENDPOINT}]: "
+        ).strip()
+        if not endpoint:
+            endpoint = DEFAULT_ENDPOINT
+        _write_conf(endpoint)
+        print_fn(f"  ✓ Created {CONFIG_FILE}")
+
+    # --- .env ---
+    existing_key = _read_existing_key()
+    if existing_key:
+        print_fn(f"\n  API key already set: {_mask_key(existing_key)}")
+        overwrite = input_fn("  Overwrite? [y/N] ").strip().lower()
+        if overwrite in ("y", "yes"):
+            new_key = input_fn("  AISK_API_KEY: ").strip()
+            if new_key:
+                _write_env(new_key)
+                print_fn("  ✓ API key updated")
+            else:
+                print_fn("  Empty key — kept existing")
+        else:
+            print_fn("  Skipped .env")
+    else:
+        new_key = input_fn("  AISK_API_KEY: ").strip()
+        if new_key:
+            _write_env(new_key)
+            print_fn(f"  ✓ Created {ENV_FILE}")
+        else:
+            _write_env("")
+            print_fn(f"  ✓ Created {ENV_FILE} (empty key — edit later)")
+
+    print_fn("\n  ✓ Configuration saved to ~/.aisk/")

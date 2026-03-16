@@ -32,14 +32,14 @@ uv tool install .
 ## Setup
 
 ```bash
-# Create config directory with defaults
+# Interactive wizard — creates ~/.aisk/, asks for endpoint and API key
 aisk init
-
-# Edit ~/.aisk/.env and add your API key
-echo "AISK_API_KEY=sk-or-your-key-here" > ~/.aisk/.env
-
-# Optionally customize ~/.aisk/conf.toml for endpoint and aliases
 ```
+
+The wizard will:
+1. Ask for the API endpoint (default: OpenRouter, press Enter to accept)
+2. Ask for your API key
+3. If config already exists, ask whether to overwrite
 
 ### Configuration
 

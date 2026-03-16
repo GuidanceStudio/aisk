@@ -115,3 +115,67 @@ AISK_API_KEY=
 - [ ] Add bash/zsh completion script (optional, stretch — deferred)
 - [x] Final README polish with install instructions and examples
 - [x] MIT LICENSE file added
+
+## M8: Interactive `aisk init` ✅
+
+`aisk init` diventa un wizard interattivo che guida l'utente nella configurazione.
+
+### Flusso
+
+1. Crea `~/.aisk/` se non esiste
+2. **Endpoint**
+   - Se `conf.toml` non esiste → lo crea con i default, mostra l'endpoint default e chiede conferma (`Enter` per accettare, oppure inserire un URL custom)
+   - Se `conf.toml` esiste già → chiede se si vuole sovrascrivere (`conf.toml already exists. Overwrite? [y/N]`)
+3. **API key**
+   - Se `.env` non esiste **oppure** esiste già → chiede il token con prompt interattivo
+   - Se `.env` esiste, mostra il valore attuale mascherato (`Current key: sk-or-...****`) e chiede se sovrascrivere (`Overwrite? [y/N]`)
+   - Se `.env` non esiste → chiede direttamente il token
+   - Usa `input()` (non `getpass`) per compatibilità con paste da clipboard
+4. **Conferma finale** — `✓ Configuration saved to ~/.aisk/`
+
+### Task
+
+- [x] Refactor `init_config()` in `config.py` → estrarre la logica di creazione file in funzioni più piccole
+- [x] Nuova funzione `interactive_init()` in `config.py` che implementa il wizard
+- [x] Collegare `interactive_init()` al comando `aisk init` in `cli.py`
+- [x] Se `aisk init` viene invocato in contesto non-TTY (pipe), fallback al comportamento attuale (crea file senza chiedere)
+- [x] Test con mock di `input()` / `builtins.input`
+
+## M9: Nuovi alias Perplexity + aggiornamento default
+
+Aggiungere alias Perplexity ai default e aggiornare il template `conf.toml`.
+
+### Nuovi alias
+
+| Alias | Modello |
+|-------|---------|
+| `s` | `perplexity/sonar` |
+| `sps` | `perplexity/sonar-pro-search` |
+
+### Task
+
+- [ ] Aggiungere `s` e `sps` a `DEFAULT_ALIASES` in `config.py`
+- [ ] Aggiungere la sezione `# Perplexity` al template `DEFAULT_CONF_TOML`
+- [ ] Aggiornare i test per includere i nuovi alias
+- [ ] Aggiornare la tabella alias nel DEVPLAN (sezione M2)
+
+## M10: Shell autocomplete
+
+Tab-completion per bash e zsh. Completa il nome del modello (alias + eventuali modelli diretti usati di recente).
+
+### Approccio
+
+Generare uno script di completion che legge gli alias da `~/.aisk/conf.toml` a runtime.
+
+### Task
+
+- [ ] `aisk completions bash` — stampa lo script bash completion su stdout
+- [ ] `aisk completions zsh` — stampa lo script zsh completion su stdout
+- [ ] Lo script completa:
+  - Primo argomento: alias da `conf.toml` + subcomandi (`init`, `models`, `completions`)
+  - Flag: `-q`, `--quiet`, `--version`
+- [ ] Istruzioni di installazione nel README:
+  - bash: `eval "$(aisk completions bash)"` in `.bashrc`
+  - zsh: `eval "$(aisk completions zsh)"` in `.zshrc`
+- [ ] Test: verificare che gli script generati contengano gli alias corretti
+- [ ] Rimuovere la nota "deferred" da M7

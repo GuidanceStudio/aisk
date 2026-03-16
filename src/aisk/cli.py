@@ -4,7 +4,7 @@ import sys
 from aisk import __version__
 from aisk.aliases import resolve_model
 from aisk.client import stream_chat
-from aisk.config import init_config, load_config
+from aisk.config import init_config, interactive_init, load_config
 from aisk.output import render_quiet, render_verbose
 
 
@@ -38,8 +38,11 @@ def main(argv: list[str] | None = None) -> int:
     command = positional[0]
 
     if command == "init":
-        for action in init_config():
-            print(action)
+        if sys.stdin.isatty():
+            interactive_init()
+        else:
+            for action in init_config():
+                print(action)
         return 0
 
     if command == "models":
