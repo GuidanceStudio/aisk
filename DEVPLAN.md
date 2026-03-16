@@ -73,9 +73,9 @@ AISK_API_KEY=
   - If no match, pass through as-is (allows `aisk perplexity/sonar "query"`)
   - No prefix stripping needed — user writes what the API expects
 
-## M4: Streaming HTTP client
+## M4: Streaming HTTP client ✅
 
-- [ ] `src/aisk/client.py` — streaming request to OpenAI-compatible endpoint
+- [x] `src/aisk/client.py` — streaming request to OpenAI-compatible endpoint
   - Uses `httpx` with streaming SSE parsing
   - Sends `Authorization: Bearer <token>` header
   - Payload: `model`, `messages`, `stream: true`, `stream_options: {include_usage: true}`
