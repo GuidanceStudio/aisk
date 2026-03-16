@@ -20,6 +20,13 @@ aisk ge3flash "explain monads in Haskell"
 ## Install
 
 ```bash
+# One-liner (installs uv if needed, upgrades if already installed)
+curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/aisk/main/install.sh | bash
+```
+
+Or manually:
+
+```bash
 # From GitHub
 uv tool install git+ssh://git@github.com/Ymx1ZQ/aisk.git
 
