@@ -112,7 +112,7 @@ AISK_API_KEY=
 
 - [x] Ensure `uv tool install .` works from local clone
 - [x] Ensure `uv tool install git+ssh://git@github.com/Ymx1ZQ/aisk.git` works
-- [ ] Add bash/zsh completion script (optional, stretch — deferred)
+- [x] Add bash/zsh completion script (implemented in M10)
 - [x] Final README polish with install instructions and examples
 - [x] MIT LICENSE file added
 
@@ -159,7 +159,7 @@ Aggiungere alias Perplexity ai default e aggiornare il template `conf.toml`.
 - [x] Aggiornare i test per includere i nuovi alias
 - [x] Aggiornare la tabella alias nel DEVPLAN (sezione M2) — non necessario, la sezione M2 elenca solo la struttura originale
 
-## M10: Shell autocomplete
+## M10: Shell autocomplete ✅
 
 Tab-completion per bash e zsh. Completa il nome del modello (alias + eventuali modelli diretti usati di recente).
 
@@ -169,13 +169,13 @@ Generare uno script di completion che legge gli alias da `~/.aisk/conf.toml` a r
 
 ### Task
 
-- [ ] `aisk completions bash` — stampa lo script bash completion su stdout
-- [ ] `aisk completions zsh` — stampa lo script zsh completion su stdout
-- [ ] Lo script completa:
+- [x] `aisk completions bash` — stampa lo script bash completion su stdout
+- [x] `aisk completions zsh` — stampa lo script zsh completion su stdout
+- [x] Lo script completa:
   - Primo argomento: alias da `conf.toml` + subcomandi (`init`, `models`, `completions`)
   - Flag: `-q`, `--quiet`, `--version`
-- [ ] Istruzioni di installazione nel README:
+- [x] Istruzioni di installazione nel README:
   - bash: `eval "$(aisk completions bash)"` in `.bashrc`
   - zsh: `eval "$(aisk completions zsh)"` in `.zshrc`
-- [ ] Test: verificare che gli script generati contengano gli alias corretti
-- [ ] Rimuovere la nota "deferred" da M7
+- [x] Test: verificare che gli script generati contengano gli alias corretti
+- [x] Rimuovere la nota "deferred" da M7

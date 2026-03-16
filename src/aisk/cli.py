@@ -4,6 +4,7 @@ import sys
 from aisk import __version__
 from aisk.aliases import resolve_model
 from aisk.client import stream_chat
+from aisk.completions import generate_bash, generate_zsh
 from aisk.config import init_config, interactive_init, load_config
 from aisk.output import render_quiet, render_verbose
 
@@ -43,6 +44,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for action in init_config():
                 print(action)
+        return 0
+
+    if command == "completions":
+        shell = positional[1] if len(positional) > 1 else None
+        if shell == "bash":
+            print(generate_bash())
+        elif shell == "zsh":
+            print(generate_zsh())
+        else:
+            print("Usage: aisk completions <bash|zsh>", file=sys.stderr)
+            return 2
         return 0
 
     if command == "models":

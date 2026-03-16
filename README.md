@@ -108,6 +108,18 @@ two of three properties simultaneously: Consistency, Availability,
 and Partition tolerance...
 ```
 
+## Shell Completions
+
+Tab-completion for model aliases and subcommands.
+
+```bash
+# Bash — add to ~/.bashrc
+eval "$(aisk completions bash)"
+
+# Zsh — add to ~/.zshrc
+eval "$(aisk completions zsh)"
+```
+
 ## Dependencies
 
 Minimal by design:
