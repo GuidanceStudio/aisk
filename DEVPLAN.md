@@ -1,12 +1,12 @@
 # aisk — Development Plan
 
-## M1: Project scaffolding
+## M1: Project scaffolding ✅
 
-- [ ] `pyproject.toml` with uv-compatible build (hatchling), entry point `aisk`, Python >=3.10
-- [ ] `src/aisk/__init__.py` with `__version__`
-- [ ] `src/aisk/cli.py` — argparse-based CLI skeleton
-- [ ] `.gitignore` for Python
-- [ ] Minimal `README.md` (already written)
+- [x] `pyproject.toml` with uv-compatible build (hatchling), entry point `aisk`, Python >=3.10
+- [x] `src/aisk/__init__.py` with `__version__`
+- [x] `src/aisk/cli.py` — argparse-based CLI skeleton
+- [x] `.gitignore` for Python
+- [x] Minimal `README.md` (already written)
 
 ## M2: Configuration system (`~/.aisk/`)
 

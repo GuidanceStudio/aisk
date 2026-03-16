@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aisk"
+version = "0.1.0"
+description = "A fast, minimal CLI to ask questions to any LLM from your terminal."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.scripts]
+aisk = "aisk.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aisk"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
