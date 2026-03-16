@@ -59,8 +59,21 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "models":
         cfg = load_config()
+        # Group aliases by provider (text before '/')
+        groups: dict[str, list[tuple[str, str]]] = {}
         for alias, model_name in sorted(cfg.aliases.items()):
-            print(f"  {alias:12s} → {model_name}")
+            provider = model_name.split("/", 1)[0] if "/" in model_name else "Other"
+            groups.setdefault(provider, []).append((alias, model_name))
+
+        # Provider display names: capitalize first letter
+        first = True
+        for provider in sorted(groups):
+            if not first:
+                print()
+            first = False
+            print(f"  {provider.capitalize()}")
+            for alias, model_name in groups[provider]:
+                print(f"    {alias:12s} {model_name}")
         return 0
 
     # Main flow: aisk <model> [message words...]

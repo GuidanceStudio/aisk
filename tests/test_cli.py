@@ -36,8 +36,13 @@ def test_init_subcommand(capsys, tmp_path, monkeypatch):
 def test_models_subcommand(capsys):
     assert main(["models"]) == 0
     out = capsys.readouterr().out
+    # Check grouped output
+    assert "Google" in out
     assert "ge3flash" in out
     assert "google/gemini" in out
+    assert "Perplexity" in out
+    assert "Anthropic" in out
+    assert "Openai" in out
 
 
 def test_no_api_key_non_tty(capsys, monkeypatch):

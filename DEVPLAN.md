@@ -213,15 +213,15 @@ Eliminare la necessità di `aisk init` esplicito. Al primo utilizzo (qualsiasi c
 - [x] `aisk init` resta disponibile per riconfigurare manualmente
 - [x] Test: primo run senza config lancia wizard (mock), poi procede
 
-## M13: Migliorare `aisk models`
+## M13: Migliorare `aisk models` ✅
 
 Rendere l'output di `aisk models` più leggibile.
 
 ### Task
 
-- [ ] Raggruppare alias per provider (Google, OpenAI, Anthropic, Perplexity, etc.) basandosi sul prefisso del model name (prima di `/`)
-- [ ] Formattare con header di sezione e colonne allineate
-- [ ] Output esempio:
+- [x] Raggruppare alias per provider (Google, OpenAI, Anthropic, Perplexity, etc.) basandosi sul prefisso del model name (prima di `/`)
+- [x] Formattare con header di sezione e colonne allineate
+- [x] Output esempio:
   ```
   Google
     ge31pro      google/gemini-3.1-pro-preview
@@ -231,7 +231,7 @@ Rendere l'output di `aisk models` più leggibile.
     s            perplexity/sonar
     sps          perplexity/sonar-pro-search
   ```
-- [ ] Test: verificare raggruppamento e formattazione
+- [x] Test: verificare raggruppamento e formattazione
 
 ## M14: Aggiornamento README
 
