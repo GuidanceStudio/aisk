@@ -21,9 +21,9 @@ DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_ALIASES: dict[str, str] = {
     # Google Gemini
     "ge31pro": "google/gemini-3.1-pro-preview",
-    "ge3flash": "google/gemini-2.5-flash-preview",
-    "ge25flash": "google/gemini-2.5-flash-preview",
-    "ge25lite": "google/gemini-2.5-flash-lite-preview",
+    "ge3flash": "google/gemini-3-flash-preview",
+    "ge25flash": "google/gemini-2.5-flash",
+    "ge25lite": "google/gemini-2.5-flash-lite",
     # OpenAI
     "gpt52": "openai/gpt-5.2",
     "gpt51": "openai/gpt-5.1",
@@ -32,24 +32,24 @@ DEFAULT_ALIASES: dict[str, str] = {
     "gpt5nano": "openai/gpt-5-nano",
     "o4m": "openai/o4-mini",
     # Anthropic
-    "clo46": "anthropic/claude-opus-4",
-    "cls46": "anthropic/claude-sonnet-4",
+    "clo46": "anthropic/claude-opus-4.6",
+    "cls46": "anthropic/claude-sonnet-4.6",
     # DeepSeek
-    "dsv32": "deepseek/deepseek-chat-v3-0324",
-    "dsr1": "deepseek/deepseek-r1",
+    "dsv32": "deepseek/deepseek-v3.2",
+    "dsr1": "deepseek/deepseek-r1-0528",
     # Qwen
-    "qwen35p": "qwen/qwen3.5-coder-plus",
-    "qwen35": "qwen/qwen3.5-coder",
+    "qwen35p": "qwen/qwen3.5-plus-02-15",
+    "qwen35": "qwen/qwen3.5-397b-a17b",
     # Perplexity
     "s": "perplexity/sonar",
     "sps": "perplexity/sonar-pro-search",
     # Other
-    "m25": "minimax/minimax-m1-80k",
-    "glm5": "zhipu/glm-5-plus",
+    "m25": "minimax/minimax-m2.5",
+    "glm5": "z-ai/glm-5",
     "k25": "moonshotai/kimi-k2.5",
-    "mistral": "mistralai/mistral-large-2411",
-    "l4scout": "meta-llama/llama-4-scout",
-    "l4mav": "meta-llama/llama-4-maverick",
+    "mistral": "mistralai/mistral-large-2512",
+    "l4scout": "meta-llama/llama-4-scout:groq",
+    "l4mav": "meta-llama/llama-4-maverick:groq",
 }
 
 DEFAULT_CONF_TOML = """\
@@ -59,9 +59,9 @@ endpoint = "https://openrouter.ai/api/v1/chat/completions"
 [aliases]
 # Google Gemini
 ge31pro = "google/gemini-3.1-pro-preview"
-ge3flash = "google/gemini-2.5-flash-preview"
-ge25flash = "google/gemini-2.5-flash-preview"
-ge25lite = "google/gemini-2.5-flash-lite-preview"
+ge3flash = "google/gemini-3-flash-preview"
+ge25flash = "google/gemini-2.5-flash"
+ge25lite = "google/gemini-2.5-flash-lite"
 
 # OpenAI
 gpt52 = "openai/gpt-5.2"
@@ -72,28 +72,28 @@ gpt5nano = "openai/gpt-5-nano"
 o4m = "openai/o4-mini"
 
 # Anthropic
-clo46 = "anthropic/claude-opus-4"
-cls46 = "anthropic/claude-sonnet-4"
+clo46 = "anthropic/claude-opus-4.6"
+cls46 = "anthropic/claude-sonnet-4.6"
 
 # DeepSeek
-dsv32 = "deepseek/deepseek-chat-v3-0324"
-dsr1 = "deepseek/deepseek-r1"
+dsv32 = "deepseek/deepseek-v3.2"
+dsr1 = "deepseek/deepseek-r1-0528"
 
 # Qwen
-qwen35p = "qwen/qwen3.5-coder-plus"
-qwen35 = "qwen/qwen3.5-coder"
+qwen35p = "qwen/qwen3.5-plus-02-15"
+qwen35 = "qwen/qwen3.5-397b-a17b"
 
 # Perplexity
 s = "perplexity/sonar"
 sps = "perplexity/sonar-pro-search"
 
 # Other
-m25 = "minimax/minimax-m1-80k"
-glm5 = "zhipu/glm-5-plus"
+m25 = "minimax/minimax-m2.5"
+glm5 = "z-ai/glm-5"
 k25 = "moonshotai/kimi-k2.5"
-mistral = "mistralai/mistral-large-2411"
-l4scout = "meta-llama/llama-4-scout"
-l4mav = "meta-llama/llama-4-maverick"
+mistral = "mistralai/mistral-large-2512"
+l4scout = "meta-llama/llama-4-scout:groq"
+l4mav = "meta-llama/llama-4-maverick:groq"
 """
 
 DEFAULT_ENV = """\

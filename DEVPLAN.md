@@ -306,3 +306,44 @@ Le shell completions esistono (`aisk completions bash/zsh`) ma l'utente deve agg
 - [x] Test: `aisk completions install` appende la riga corretta
 - [x] Test: `aisk completions install` non duplica se già presente
 - [x] Test: `aisk completions refresh` produce output valido
+
+## M17: Allinea alias ad aider+ e fix costi ✅
+
+Due problemi:
+1. Gli alias puntano a modelli vecchi/errati rispetto ad aider+
+2. I costi non vengono mostrati: il codice cerca `chunk["cost"]` ma OpenRouter li mette in `usage.cost` o `usage.total_cost`
+
+### A. Aggiornamento alias
+
+Allineare `DEFAULT_ALIASES` e `DEFAULT_CONF_TOML` a quelli di aider+ (mantenendo `s` e `sps` Perplexity che non ci sono in aider+):
+
+| Alias | Vecchio | Nuovo (da aider+) |
+|---|---|---|
+| ge3flash | `google/gemini-2.5-flash-preview` | `google/gemini-3-flash-preview` |
+| ge25flash | `google/gemini-2.5-flash-preview` | `google/gemini-2.5-flash` |
+| ge25lite | `google/gemini-2.5-flash-lite-preview` | `google/gemini-2.5-flash-lite` |
+| clo46 | `anthropic/claude-opus-4` | `anthropic/claude-opus-4.6` |
+| cls46 | `anthropic/claude-sonnet-4` | `anthropic/claude-sonnet-4.6` |
+| dsv32 | `deepseek/deepseek-chat-v3-0324` | `deepseek/deepseek-v3.2` |
+| dsr1 | `deepseek/deepseek-r1` | `deepseek/deepseek-r1-0528` |
+| qwen35p | `qwen/qwen3.5-coder-plus` | `qwen/qwen3.5-plus-02-15` |
+| qwen35 | `qwen/qwen3.5-coder` | `qwen/qwen3.5-397b-a17b` |
+| m25 | `minimax/minimax-m1-80k` | `minimax/minimax-m2.5` |
+| glm5 | `zhipu/glm-5-plus` | `z-ai/glm-5` |
+| mistral | `mistralai/mistral-large-2411` | `mistralai/mistral-large-2512` |
+| l4scout | `meta-llama/llama-4-scout` | `meta-llama/llama-4-scout:groq` |
+| l4mav | `meta-llama/llama-4-maverick` | `meta-llama/llama-4-maverick:groq` |
+
+### Task
+
+- [x] Aggiornare `DEFAULT_ALIASES` in `config.py`
+- [x] Aggiornare `DEFAULT_CONF_TOML` in `config.py`
+
+### B. Fix costi
+
+- [x] In `client.py`, cercare il costo in `usage.cost` e `usage.total_cost` (come fa a+ask) invece di `chunk.cost`
+
+### C. Test
+
+- [x] Aggiornare test che referenziano i vecchi model name
+- [x] Test: il costo viene estratto da `usage.cost`

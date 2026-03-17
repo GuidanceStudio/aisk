@@ -135,8 +135,8 @@ def test_usage_with_reasoning_tokens():
                 "prompt_tokens": 10,
                 "completion_tokens": 50,
                 "completion_tokens_details": {"reasoning_tokens": 30},
+                "cost": 0.0123,
             },
-            "cost": 0.0123,
         },
     )
     resp = _mock_stream_response(lines)
@@ -151,6 +151,30 @@ def test_usage_with_reasoning_tokens():
     usage = [e for e in events if isinstance(e, UsageInfo)][0]
     assert usage.reasoning_tokens == 30
     assert usage.cost == 0.0123
+
+
+def test_usage_cost_from_total_cost():
+    """OpenRouter may use 'total_cost' instead of 'cost' in usage."""
+    lines = _make_sse(
+        {
+            "usage": {
+                "prompt_tokens": 5,
+                "completion_tokens": 10,
+                "total_cost": 0.0042,
+            },
+        },
+    )
+    resp = _mock_stream_response(lines)
+    client = MagicMock()
+    client.stream.return_value = resp
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+
+    with patch("aisk.client.httpx.Client", return_value=client):
+        events = list(stream_chat(ENDPOINT, API_KEY, MODEL, MESSAGE))
+
+    usage = [e for e in events if isinstance(e, UsageInfo)][0]
+    assert usage.cost == 0.0042
 
 
 def test_malformed_json_skipped():

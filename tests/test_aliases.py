@@ -3,7 +3,7 @@ from aisk.config import DEFAULT_ALIASES
 
 
 def test_known_alias():
-    assert resolve_model("ge3flash", DEFAULT_ALIASES) == "google/gemini-2.5-flash-preview"
+    assert resolve_model("ge3flash", DEFAULT_ALIASES) == "google/gemini-3-flash-preview"
 
 
 def test_unknown_passthrough():

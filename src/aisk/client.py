@@ -95,11 +95,12 @@ def stream_chat(
                         reasoning = 0
                         details = usage.get("completion_tokens_details") or {}
                         reasoning = details.get("reasoning_tokens", 0)
+                        cost = usage.get("cost", usage.get("total_cost"))
                         yield UsageInfo(
                             prompt_tokens=usage.get("prompt_tokens", 0),
                             completion_tokens=usage.get("completion_tokens", 0),
                             reasoning_tokens=reasoning,
-                            cost=chunk.get("cost"),
+                            cost=cost,
                         )
 
                     # Content / reasoning deltas
