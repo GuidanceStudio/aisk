@@ -7,6 +7,7 @@ from aisk.config import (
     DEFAULT_CONF_TOML,
     DEFAULT_ENV,
     DEFAULT_ENDPOINT,
+    DEFAULT_SHORTCUTS,
     load_config,
     init_config,
 )
@@ -17,6 +18,7 @@ def test_default_config():
     assert cfg.endpoint == DEFAULT_ENDPOINT
     assert cfg.api_key == ""
     assert cfg.aliases == DEFAULT_ALIASES
+    assert cfg.shortcuts == DEFAULT_SHORTCUTS
 
 
 def test_load_config_no_files(tmp_path, monkeypatch):
@@ -78,6 +80,7 @@ def test_init_config_creates_files(tmp_path, monkeypatch):
     assert (tmp_path / "conf.toml").exists()
     assert (tmp_path / ".env").exists()
     assert (tmp_path / "conf.toml").read_text() == DEFAULT_CONF_TOML
+    assert "[shortcuts]" in (tmp_path / "conf.toml").read_text()
     assert (tmp_path / ".env").read_text() == DEFAULT_ENV
 
 
@@ -92,3 +95,35 @@ def test_init_config_skips_existing(tmp_path, monkeypatch):
     actions = init_config()
     assert all("Skipped" in a for a in actions)
     assert (tmp_path / "conf.toml").read_text() == "existing"
+
+
+def test_load_config_with_shortcuts(tmp_path, monkeypatch):
+    """Shortcuts section is parsed from conf.toml."""
+    conf = tmp_path / "conf.toml"
+    conf.write_text(
+        '[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n\n'
+        '[shortcuts]\ngpt = "gpt54"\ncl = "cls46"\n'
+    )
+    monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
+    monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
+    monkeypatch.delenv("AISK_API_KEY", raising=False)
+
+    cfg = load_config()
+    assert cfg.shortcuts["gpt"] == "gpt54"
+    assert cfg.shortcuts["cl"] == "cls46"
+    # Defaults are also present
+    assert cfg.shortcuts["ds"] == "dsv32"
+
+
+def test_load_config_no_shortcuts_section(tmp_path, monkeypatch):
+    """Config without [shortcuts] uses defaults."""
+    conf = tmp_path / "conf.toml"
+    conf.write_text('[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n')
+    monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
+    monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
+    monkeypatch.delenv("AISK_API_KEY", raising=False)
+
+    cfg = load_config()
+    assert cfg.shortcuts == DEFAULT_SHORTCUTS

@@ -137,6 +137,30 @@ two of three properties simultaneously: Consistency, Availability,
 and Partition tolerance...
 ```
 
+## Shell Shortcuts
+
+Define short shell functions that call `aisk` with a specific model. Configure them in `~/.aisk/conf.toml`:
+
+```toml
+[shortcuts]
+ds = "dsv32"
+sps = "sps"
+# gpt = "gpt54"
+# cl = "cls46"
+# ge = "ge25flash"
+```
+
+Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsv32 "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
+
+```bash
+# See generated functions
+aisk shortcuts
+
+# Use directly
+ds what is the CAP theorem
+sps latest news on Rust 2026
+```
+
 ## Shell Completions
 
 Tab-completion for model aliases and subcommands. Installed automatically by `install.sh`.
@@ -145,7 +169,7 @@ Tab-completion for model aliases and subcommands. Installed automatically by `in
 # Install manually (appends to ~/.bashrc or ~/.zshrc)
 aisk completions install
 
-# Refresh after changing aliases in conf.toml
+# Refresh after changing aliases/shortcuts in conf.toml
 eval "$(aisk completions refresh)"
 ```
 

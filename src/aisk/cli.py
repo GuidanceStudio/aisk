@@ -4,7 +4,7 @@ import sys
 from aisk import __version__
 from aisk.aliases import resolve_model
 from aisk.client import stream_chat
-from aisk.completions import generate_bash, generate_refresh, generate_zsh, install_completions
+from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
 from aisk.output import render_quiet, render_verbose
 
@@ -13,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aisk",
         description="Ask any LLM from your terminal.",
-        usage="%(prog)s [-q] <model> <message>\n       %(prog)s init\n       %(prog)s models\n       %(prog)s --version",
+        usage="%(prog)s [-q] <model> <message>\n       %(prog)s init\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s --version",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
@@ -78,6 +78,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {provider.capitalize()}")
             for alias, model_name in groups[provider]:
                 print(f"    {alias:12s} {model_name}")
+        return 0
+
+    if command == "shortcuts":
+        output = generate_shortcuts()
+        if output:
+            print(output, end="")
+        else:
+            print("No shortcuts configured. Add a [shortcuts] section to ~/.aisk/conf.toml")
         return 0
 
     # Main flow: aisk <model> [message words...]

@@ -11,13 +11,9 @@ _aisk_completions() {{
     cur="${{COMP_WORDS[COMP_CWORD]}}"
     prev="${{COMP_WORDS[COMP_CWORD-1]}}"
 
-    if [[ $COMP_CWORD -eq 1 ]]; then
+    if [[ $COMP_CWORD -eq 1 ]] || [[ "$prev" == "-q" ]] || [[ "$prev" == "--quiet" ]]; then
         local models="{models}"
-        local subcommands="init models completions"
-        COMPREPLY=( $(compgen -W "$models $subcommands" -- "$cur") )
-    elif [[ $COMP_CWORD -eq 1 ]] || [[ "$prev" == "-q" ]] || [[ "$prev" == "--quiet" ]]; then
-        local models="{models}"
-        local subcommands="init models completions"
+        local subcommands="init models shortcuts completions"
         COMPREPLY=( $(compgen -W "$models $subcommands" -- "$cur") )
     elif [[ "$cur" == -* ]]; then
         COMPREPLY=( $(compgen -W "-q --quiet --version --help" -- "$cur") )
@@ -32,13 +28,11 @@ ZSH_TEMPLATE = """\
 _aisk() {{
     local -a models subcommands flags
     models=({models})
-    subcommands=(init models completions)
+    subcommands=(init models shortcuts completions)
     flags=(-q --quiet --version --help)
 
-    if (( CURRENT == 2 )); then
+    if (( CURRENT == 2 )) || [[ "${{words[2]}}" == "-q" ]] || [[ "${{words[2]}}" == "--quiet" ]]; then
         _describe 'model or command' models -- subcommands -- flags
-    elif (( CURRENT == 2 )) || [[ "${{words[2]}}" == "-q" ]] || [[ "${{words[2]}}" == "--quiet" ]]; then
-        _describe 'model or command' models -- subcommands
     fi
 }}
 
@@ -46,18 +40,30 @@ _aisk "$@"
 """
 
 
+def generate_shortcuts(cfg=None) -> str:
+    """Generate shell functions from [shortcuts] in conf.toml."""
+    if cfg is None:
+        cfg = load_config()
+    if not cfg.shortcuts:
+        return ""
+    lines = ["", "# aisk shortcuts"]
+    for name, alias in sorted(cfg.shortcuts.items()):
+        lines.append(f'{name}() {{ aisk {alias} "$@"; }}')
+    return "\n".join(lines) + "\n"
+
+
 def generate_bash() -> str:
-    """Generate bash completion script with current aliases."""
+    """Generate bash completion script with current aliases and shortcuts."""
     cfg = load_config()
     models = " ".join(sorted(cfg.aliases.keys()))
-    return BASH_TEMPLATE.format(models=models)
+    return BASH_TEMPLATE.format(models=models) + generate_shortcuts(cfg)
 
 
 def generate_zsh() -> str:
-    """Generate zsh completion script with current aliases."""
+    """Generate zsh completion script with current aliases and shortcuts."""
     cfg = load_config()
     models = " ".join(sorted(cfg.aliases.keys()))
-    return ZSH_TEMPLATE.format(models=models)
+    return ZSH_TEMPLATE.format(models=models) + generate_shortcuts(cfg)
 
 
 def _detect_shell() -> str:

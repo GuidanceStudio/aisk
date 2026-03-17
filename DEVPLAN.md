@@ -424,3 +424,81 @@ Da 21 a 18. Lista aggiornata:
 - [x] Aggiornare i test in `test_aliases.py` e `test_config.py`
 - [x] Aggiornare gli esempi nel README se referenziano alias rimossi
 - [ ] Aggiornare la tabella M17 nel DEVPLAN per riflettere lo stato storico (skipped — storico intatto per riferimento)
+
+## M19: Shell shortcuts da conf.toml ✅
+
+Generare funzioni shell (es. `ds()`, `sps()`) direttamente da una sezione `[shortcuts]` in `conf.toml`, eliminando la necessità di definirle manualmente nel `.bashrc`.
+
+### Motivazione
+
+L'utente ha funzioni manuali nel bashrc (`ds`, `k25`, `sps`) che chiamano il vecchio `a+ask`. Centralizzare in `conf.toml` rende tutto gestibile da aisk: aggiungere/rimuovere shortcut = editare il toml.
+
+### Formato conf.toml
+
+```toml
+[shortcuts]
+ds = "dsv32"
+sps = "sps"
+gpt = "gpt54"
+cl = "cls46"
+ge = "ge25flash"
+```
+
+Ogni chiave è il nome della funzione shell, il valore è l'alias aisk (o un model name diretto).
+
+### Generazione
+
+Ogni shortcut `nome = "alias"` genera:
+
+```bash
+nome() { aisk alias "$@"; }
+```
+
+Per zsh, stessa sintassi (compatibile).
+
+### Integrazione con completions
+
+Lo script generato da `aisk completions bash/zsh` includerà in coda le funzioni shortcut. Così `eval "$(aisk completions bash)"` nel bashrc attiva sia le completions che gli shortcut — zero configurazione manuale.
+
+### Subcomando `aisk shortcuts`
+
+Stampa le funzioni shell generate, utile per debug:
+
+```
+$ aisk shortcuts
+ds()  { aisk dsv32 "$@"; }
+sps() { aisk sps "$@"; }
+gpt() { aisk gpt54 "$@"; }
+cl()  { aisk cls46 "$@"; }
+ge()  { aisk ge25flash "$@"; }
+```
+
+### Default shortcuts
+
+Aggiungere una sezione `[shortcuts]` al `DEFAULT_CONF_TOML` con:
+
+| Shortcut | Alias | Modello |
+|----------|-------|---------|
+| `ds` | `dsv32` | DeepSeek v3.2 |
+| `sps` | `sps` | Perplexity sonar-pro-search |
+
+Solo questi due di default (quelli che l'utente usa già). Gli altri (`gpt`, `cl`, `ge`) saranno suggeriti come commenti nel template.
+
+### Pulizia bashrc
+
+L'utente rimuoverà manualmente le vecchie funzioni `ds()`, `k25()`, `sps()` dal bashrc. L'installer **non** tocca funzioni esistenti — mostra solo un messaggio se rileva residui.
+
+### Task
+
+- [x] Aggiungere sezione `[shortcuts]` a `DEFAULT_CONF_TOML` in `config.py`
+- [x] Aggiungere campo `shortcuts: dict[str, str]` a `Config` dataclass in `config.py`, con parsing da `conf.toml`
+- [x] Nuova funzione `generate_shortcuts()` in `completions.py` — genera le funzioni shell dalla config
+- [x] Integrare `generate_shortcuts()` nell'output di `generate_bash()` e `generate_zsh()` (append in coda allo script)
+- [x] Nuovo subcomando `aisk shortcuts` in `cli.py` — stampa solo le funzioni generate (per debug/verifica)
+- [x] `install.sh` — dopo l'installazione, mostrare hint se rileva vecchie funzioni `a+ask` nel bashrc
+- [x] Test: `generate_shortcuts()` produce output corretto
+- [x] Test: completions bash/zsh includono gli shortcut in coda
+- [x] Test: `aisk shortcuts` stampa le funzioni
+- [x] Test: config senza `[shortcuts]` → nessun errore, shortcuts vuoti
+- [x] Aggiornare README con documentazione shortcuts
+- [x] Fix: rimossi branch morti nei template bash/zsh completions (pre-esistenti)
