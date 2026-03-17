@@ -46,6 +46,13 @@ echo -e "  ${DIM}$(aisk completions install)${RESET}"
 
 echo ""
 echo -e "${SEP}"
-echo -e "  ${GREEN}✓${RESET} All done! Run ${BOLD}aisk --version${RESET} to verify."
+# Detect shell rc file for the hint
+if [[ "${SHELL:-}" == */zsh ]]; then
+    _RC="~/.zshrc"
+else
+    _RC="~/.bashrc"
+fi
+echo -e "  ${GREEN}✓${RESET} All done! Run ${BOLD}source ${_RC}${RESET} to activate completions,"
+echo -e "    then ${BOLD}aisk --version${RESET} to verify."
 echo -e "${SEP}"
 echo ""
