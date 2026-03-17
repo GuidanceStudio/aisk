@@ -86,6 +86,12 @@ aisk ge3flash "what is the CAP theorem?"
 # No quotes needed — all words after the model are joined automatically
 aisk ge3flash what is the CAP theorem
 
+# Use quotes if your message contains shell special characters: () ! > | &
+aisk glm5 "ciao come stai? (spero bene)"
+
+# Use single quotes for backticks
+aisk ge3flash 'spiega il comando `ls -la`'
+
 # Quiet mode — only the LLM response, no decoration
 aisk -q cls46 "translate to English: buongiorno"
 
