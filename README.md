@@ -3,14 +3,14 @@
 A fast, minimal CLI to ask questions to any LLM from your terminal.
 
 ```bash
-aisk ge3flash "explain monads in Haskell"
+aisk ge31lite "explain monads in Haskell"
 ```
 
 ## Features
 
 - **Streaming responses** — tokens appear as they arrive
 - **Reasoning support** — shows thinking tokens for models like o4-mini, DeepSeek-R1
-- **Model aliases** — short names for long model IDs (`ge3flash` → `google/gemini-3-flash-preview`)
+- **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
 - **Stdin support** — `echo "explain this" | aisk cls46`
@@ -41,7 +41,7 @@ uv tool install .
 No explicit setup needed. On first run, `aisk` detects the missing configuration and launches the setup wizard automatically:
 
 ```bash
-aisk ge3flash "hello world"
+aisk ge31lite "hello world"
 # → First run detected — launching setup wizard...
 # → Asks for endpoint and API key, then runs your query
 ```
@@ -72,7 +72,7 @@ AISK_API_KEY=sk-or-...
 endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
 [aliases]
-ge3flash = "google/gemini-3-flash-preview"
+ge31lite = "google/gemini-3.1-flash-lite-preview"
 cls46 = "anthropic/claude-sonnet-4.6"
 # ... add your own
 ```
@@ -81,16 +81,16 @@ cls46 = "anthropic/claude-sonnet-4.6"
 
 ```bash
 # Ask a question (verbose mode, default)
-aisk ge3flash "what is the CAP theorem?"
+aisk ge31lite "what is the CAP theorem?"
 
 # No quotes needed — all words after the model are joined automatically
-aisk ge3flash what is the CAP theorem
+aisk ge31lite what is the CAP theorem
 
 # Use quotes if your message contains shell special characters: () ! > | &
 aisk glm5 "what is f(x) = x^2 + (x-1)?"
 
 # Use single quotes for backticks
-aisk ge3flash 'explain the `ls -la` command'
+aisk ge31lite 'explain the `ls -la` command'
 
 # Quiet mode — only the LLM response, no decoration
 aisk -q cls46 "translate to English: buongiorno"
@@ -116,7 +116,7 @@ aisk --version
 
 ```
 ──────────────────────────────────────────────────────────────────────────────────────────────────
- Model: google/gemini-3-flash-preview | User: what is the CAP theorem?
+ Model: google/gemini-3.1-flash-lite-preview | User: what is the CAP theorem?
 ──────────────────────────────────────────────────────────────────────────────────────────────────
 ► ANSWER
 The CAP theorem states that a distributed system can only guarantee

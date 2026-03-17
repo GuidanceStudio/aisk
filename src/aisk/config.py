@@ -21,22 +21,20 @@ DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_ALIASES: dict[str, str] = {
     # Google Gemini
     "ge31pro": "google/gemini-3.1-pro-preview",
-    "ge3flash": "google/gemini-3-flash-preview",
+    "ge31lite": "google/gemini-3.1-flash-lite-preview",
     "ge25flash": "google/gemini-2.5-flash",
-    "ge25lite": "google/gemini-2.5-flash-lite",
     # OpenAI
-    "gpt52": "openai/gpt-5.2",
-    "gpt51": "openai/gpt-5.1",
-    "gpt5": "openai/gpt-5",
+    "gpt54": "openai/gpt-5.4",
     "gpt5mini": "openai/gpt-5-mini",
     "gpt5nano": "openai/gpt-5-nano",
     "o4m": "openai/o4-mini",
     # Anthropic
     "clo46": "anthropic/claude-opus-4.6",
     "cls46": "anthropic/claude-sonnet-4.6",
+    "clh45": "anthropic/claude-haiku-4.5",
     # DeepSeek
     "dsv32": "deepseek/deepseek-v3.2",
-    "dsr1": "deepseek/deepseek-r1-0528",
+    "dsr1": "deepseek/deepseek-r1",
     # Qwen
     "qwen35p": "qwen/qwen3.5-plus-02-15",
     "qwen35": "qwen/qwen3.5-397b-a17b",
@@ -46,7 +44,6 @@ DEFAULT_ALIASES: dict[str, str] = {
     # Other
     "m25": "minimax/minimax-m2.5",
     "glm5": "z-ai/glm-5",
-    "k25": "moonshotai/kimi-k2.5",
     "mistral": "mistralai/mistral-large-2512",
     "l4scout": "meta-llama/llama-4-scout:groq",
     "l4mav": "meta-llama/llama-4-maverick:groq",
@@ -59,14 +56,11 @@ endpoint = "https://openrouter.ai/api/v1/chat/completions"
 [aliases]
 # Google Gemini
 ge31pro = "google/gemini-3.1-pro-preview"
-ge3flash = "google/gemini-3-flash-preview"
+ge31lite = "google/gemini-3.1-flash-lite-preview"
 ge25flash = "google/gemini-2.5-flash"
-ge25lite = "google/gemini-2.5-flash-lite"
 
 # OpenAI
-gpt52 = "openai/gpt-5.2"
-gpt51 = "openai/gpt-5.1"
-gpt5 = "openai/gpt-5"
+gpt54 = "openai/gpt-5.4"
 gpt5mini = "openai/gpt-5-mini"
 gpt5nano = "openai/gpt-5-nano"
 o4m = "openai/o4-mini"
@@ -74,10 +68,11 @@ o4m = "openai/o4-mini"
 # Anthropic
 clo46 = "anthropic/claude-opus-4.6"
 cls46 = "anthropic/claude-sonnet-4.6"
+clh45 = "anthropic/claude-haiku-4.5"
 
 # DeepSeek
 dsv32 = "deepseek/deepseek-v3.2"
-dsr1 = "deepseek/deepseek-r1-0528"
+dsr1 = "deepseek/deepseek-r1"
 
 # Qwen
 qwen35p = "qwen/qwen3.5-plus-02-15"
@@ -90,7 +85,6 @@ sps = "perplexity/sonar-pro-search"
 # Other
 m25 = "minimax/minimax-m2.5"
 glm5 = "z-ai/glm-5"
-k25 = "moonshotai/kimi-k2.5"
 mistral = "mistralai/mistral-large-2512"
 l4scout = "meta-llama/llama-4-scout:groq"
 l4mav = "meta-llama/llama-4-maverick:groq"

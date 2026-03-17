@@ -52,7 +52,7 @@ def test_load_config_with_files(tmp_path, monkeypatch):
     assert cfg.api_key == "test-key-123"
     assert cfg.aliases["mymodel"] == "custom/model-v1"
     # Default aliases still present
-    assert "ge3flash" in cfg.aliases
+    assert "ge31lite" in cfg.aliases
 
 
 def test_load_config_env_override(tmp_path, monkeypatch):

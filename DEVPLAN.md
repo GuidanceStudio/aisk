@@ -347,3 +347,80 @@ Allineare `DEFAULT_ALIASES` e `DEFAULT_CONF_TOML` a quelli di aider+ (mantenendo
 
 - [x] Aggiornare test che referenziano i vecchi model name
 - [x] Test: il costo viene estratto da `usage.cost`
+
+## M18: Pulizia e aggiornamento alias (marzo 2026) ✅
+
+Audit degli alias default basato sullo stato dei modelli a marzo 2026. Obiettivi: rimuovere modelli ridondanti/superati, aggiornare model ID obsoleti, aggiungere modelli flagship mancanti.
+
+### A. Rimozioni (5 alias)
+
+| Alias | Modello | Motivo |
+|---|---|---|
+| `gpt5` | `openai/gpt-5` | Superato da GPT-5.4 |
+| `gpt51` | `openai/gpt-5.1` | Superato — ridondante tra 5 e 5.2 |
+| `gpt52` | `openai/gpt-5.2` | Superato da GPT-5.4 |
+| `ge25lite` | `google/gemini-2.5-flash-lite` | Ridondante con ge25flash, differenza minima |
+| `k25` | `moonshotai/kimi-k2.5` | SWE-bench 76.8%, più caro di m25 ($0.50/$2.80 vs $0.30/$1.20) — peggiore dei tre cinesi |
+
+### B. Aggiornamenti (2 alias)
+
+| Alias | Vecchio model ID | Nuovo model ID | Motivo |
+|---|---|---|---|
+| `ge3flash` | `google/gemini-3-flash-preview` | `google/gemini-3.1-flash-lite-preview` | Gemini 3 Flash in dismissione il 26/03/2026 — 3.1 Flash Lite è il successore economico ($0.25/$1.50) |
+| `dsr1` | `deepseek/deepseek-r1-0528` | `deepseek/deepseek-r1` | Rimuovere suffisso data — OpenRouter punta già alla versione corrente |
+
+### C. Aggiunte (2 alias)
+
+| Alias | Modello | Prezzo | Motivo |
+|---|---|---|---|
+| `gpt54` | `openai/gpt-5.4` | $2.50/$20 | Nuovo flagship OpenAI, unifica Codex+GPT, 1M context |
+| `clh45` | `anthropic/claude-haiku-4.5` | $0.25/$1.25 | Opzione budget Anthropic mancante |
+
+### D. Rinominare alias ge3flash → ge31lite
+
+L'alias `ge3flash` cambia semantica (da flash a flash-lite, da 3.0 a 3.1). Per coerenza con la nomenclatura:
+- Rinominare `ge3flash` → `ge31lite` (punta a `google/gemini-3.1-flash-lite-preview`)
+- Questo evita confusione: l'alias dice cosa è
+
+### E. Risultato finale
+
+Da 21 a 18. Lista aggiornata:
+
+| Alias | Modello | Prezzo (in/out per 1M) |
+|---|---|---|
+| **Google Gemini** | | |
+| `ge31pro` | `google/gemini-3.1-pro-preview` | $2.00 / $12.00 |
+| `ge31lite` | `google/gemini-3.1-flash-lite-preview` | $0.25 / $1.50 |
+| `ge25flash` | `google/gemini-2.5-flash` | ~$0.30 / $2.50 |
+| **OpenAI** | | |
+| `gpt54` | `openai/gpt-5.4` | $2.50 / $20.00 |
+| `gpt5mini` | `openai/gpt-5-mini` | $0.25 / $2.00 |
+| `gpt5nano` | `openai/gpt-5-nano` | $0.05 / $0.40 |
+| `o4m` | `openai/o4-mini` | $1.10 / $4.40 |
+| **Anthropic** | | |
+| `clo46` | `anthropic/claude-opus-4.6` | $5.00 / $25.00 |
+| `cls46` | `anthropic/claude-sonnet-4.6` | $3.00 / $15.00 |
+| `clh45` | `anthropic/claude-haiku-4.5` | $0.25 / $1.25 |
+| **DeepSeek** | | |
+| `dsv32` | `deepseek/deepseek-v3.2` | $0.26 / $0.38 |
+| `dsr1` | `deepseek/deepseek-r1` | $0.70 / $2.50 |
+| **Qwen** | | |
+| `qwen35p` | `qwen/qwen3.5-plus-02-15` | — |
+| `qwen35` | `qwen/qwen3.5-397b-a17b` | — |
+| **Perplexity** | | |
+| `s` | `perplexity/sonar` | — |
+| `sps` | `perplexity/sonar-pro-search` | — |
+| **Other** | | |
+| `m25` | `minimax/minimax-m2.5` | $0.30 / $1.20 |
+| `glm5` | `z-ai/glm-5` | — |
+| `mistral` | `mistralai/mistral-large-2512` | — |
+| `l4scout` | `meta-llama/llama-4-scout:groq` | — |
+| `l4mav` | `meta-llama/llama-4-maverick:groq` | — |
+
+### Task
+
+- [x] Aggiornare `DEFAULT_ALIASES` in `config.py` (rimozioni + aggiunte + aggiornamenti)
+- [x] Aggiornare `DEFAULT_CONF_TOML` in `config.py`
+- [x] Aggiornare i test in `test_aliases.py` e `test_config.py`
+- [x] Aggiornare gli esempi nel README se referenziano alias rimossi
+- [ ] Aggiornare la tabella M17 nel DEVPLAN per riflettere lo stato storico (skipped — storico intatto per riferimento)
