@@ -10,7 +10,7 @@ aisk ge3flash "explain monads in Haskell"
 
 - **Streaming responses** — tokens appear as they arrive
 - **Reasoning support** — shows thinking tokens for models like o4-mini, DeepSeek-R1
-- **Model aliases** — short names for long model IDs (`ge3flash` → `google/gemini-2.5-flash-preview`)
+- **Model aliases** — short names for long model IDs (`ge3flash` → `google/gemini-3-flash-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
 - **Stdin support** — `echo "explain this" | aisk cls46`
@@ -72,8 +72,8 @@ AISK_API_KEY=sk-or-...
 endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
 [aliases]
-ge3flash = "google/gemini-2.5-flash-preview"
-cls46 = "anthropic/claude-sonnet-4"
+ge3flash = "google/gemini-3-flash-preview"
+cls46 = "anthropic/claude-sonnet-4.6"
 # ... add your own
 ```
 
@@ -87,10 +87,10 @@ aisk ge3flash "what is the CAP theorem?"
 aisk ge3flash what is the CAP theorem
 
 # Use quotes if your message contains shell special characters: () ! > | &
-aisk glm5 "ciao come stai? (spero bene)"
+aisk glm5 "what is f(x) = x^2 + (x-1)?"
 
 # Use single quotes for backticks
-aisk ge3flash 'spiega il comando `ls -la`'
+aisk ge3flash 'explain the `ls -la` command'
 
 # Quiet mode — only the LLM response, no decoration
 aisk -q cls46 "translate to English: buongiorno"
@@ -116,7 +116,7 @@ aisk --version
 
 ```
 ──────────────────────────────────────────────────────────────────────────────────────────────────
- Model: google/gemini-2.5-flash-preview | User: what is the CAP theorem?
+ Model: google/gemini-3-flash-preview | User: what is the CAP theorem?
 ──────────────────────────────────────────────────────────────────────────────────────────────────
 ► ANSWER
 The CAP theorem states that a distributed system can only guarantee
