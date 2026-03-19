@@ -128,6 +128,53 @@ def test_connection_error():
     assert "Connection error" in events[0].message
 
 
+def test_granular_timeout_passed_to_client():
+    """Verify that httpx.Client receives a granular Timeout object."""
+    with patch("aisk.client.httpx.Client") as mock_cls:
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.stream.side_effect = httpx.ConnectError("test")
+        mock_cls.return_value = mock_client
+
+        list(stream_chat(ENDPOINT, API_KEY, MODEL, MESSAGE,
+                         read_timeout=60.0, connect_timeout=5.0))
+
+        timeout_arg = mock_cls.call_args[1]["timeout"]
+        assert isinstance(timeout_arg, httpx.Timeout)
+        assert timeout_arg.read == 60.0
+        assert timeout_arg.connect == 5.0
+
+
+def test_connect_timeout_error():
+    client = MagicMock()
+    client.stream.side_effect = httpx.ConnectTimeout("timed out")
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+
+    with patch("aisk.client.httpx.Client", return_value=client):
+        events = list(stream_chat(ENDPOINT, API_KEY, MODEL, MESSAGE))
+
+    assert len(events) == 1
+    assert isinstance(events[0], ErrorInfo)
+    assert "Connection timed out" in events[0].message
+
+
+def test_read_timeout_error():
+    client = MagicMock()
+    client.stream.side_effect = httpx.ReadTimeout("idle timeout")
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+
+    with patch("aisk.client.httpx.Client", return_value=client):
+        events = list(stream_chat(ENDPOINT, API_KEY, MODEL, MESSAGE,
+                                  read_timeout=30.0))
+
+    assert len(events) == 1
+    assert isinstance(events[0], ErrorInfo)
+    assert "no data for 30s" in events[0].message
+
+
 def test_usage_with_reasoning_tokens():
     lines = _make_sse(
         {

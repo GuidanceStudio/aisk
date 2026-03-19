@@ -502,3 +502,75 @@ L'utente rimuoverà manualmente le vecchie funzioni `ds()`, `k25()`, `sps()` dal
 - [x] Test: config senza `[shortcuts]` → nessun errore, shortcuts vuoti
 - [x] Aggiornare README con documentazione shortcuts
 - [x] Fix: rimossi branch morti nei template bash/zsh completions (pre-esistenti)
+
+## M20: Timeout idle invece di totale ✅
+
+Il timeout attuale (`client.py:42`) è un timeout **totale** di 120 secondi passato a `httpx.Client(timeout=120.0)`. Questo significa che se una risposta streammata impiega più di 120 secondi in totale (anche se il modello sta ancora mandando token attivamente), la connessione viene chiusa con "Request timed out".
+
+### Problema
+
+Il timeout dovrebbe scattare solo quando il modello **smette di rispondere** per un certo periodo, non quando la risposta totale supera un limite. Risposte lunghe e ragionamento esteso (thinking) possono facilmente superare i 2 minuti.
+
+### Soluzione
+
+Usare `httpx.Timeout` granulare invece di un singolo float:
+
+```python
+httpx.Timeout(
+    connect=10.0,    # max 10s per stabilire la connessione
+    read=120.0,      # max 120s di silenzio tra un chunk e l'altro
+    write=10.0,      # max 10s per inviare il payload
+    pool=10.0,       # max 10s per ottenere una connessione dal pool
+)
+```
+
+Il parametro chiave è `read`: è un timeout **tra chunk successivi**, non sulla durata totale. Se il modello manda token ogni secondo, non scade mai. Se smette di mandare dati per 120 secondi, scatta il timeout.
+
+### Task
+
+- [x] Sostituire `timeout: float = 120.0` con `httpx.Timeout` granulare in `stream_chat()`
+- [x] Parametro `read_timeout` (default 120s) per controllare il timeout di inattività
+- [x] Parametro `connect_timeout` (default 10s) per il timeout di connessione
+- [x] Differenziare il messaggio di errore: "Connection timed out" vs "Response timed out (no data for Xs)"
+- [x] Test: verificare che il timeout granulare viene passato correttamente a `httpx.Client`
+- [x] Test: timeout di connessione produce messaggio distinto da timeout di lettura
+
+## M21: Opzione output buffered (`--no-stream`)
+
+Attualmente l'output è sempre progressivo (streaming token-by-token). Aggiungere un'opzione per accumulare tutta la risposta e stamparla in un colpo solo alla fine.
+
+### Motivazione
+
+Lo streaming è ottimo per l'uso interattivo, ma in alcuni casi un output completo è preferibile:
+- Piping verso tool che si aspettano input completo (non parziale)
+- Script che processano la risposta intera
+- Contesti dove il flickering dello streaming è indesiderato
+
+Nota: `-q` già esiste per output minimale, ma stampa comunque in streaming. `--no-stream` è ortogonale: controlla *quando* stampare, non *cosa* stampare. Combinazioni possibili:
+- Default: streaming + verbose
+- `-q`: streaming + solo testo
+- `--no-stream`: buffered + verbose
+- `-q --no-stream`: buffered + solo testo
+
+### Approccio
+
+Due livelli di implementazione:
+
+#### A. Client-side buffering (semplice)
+
+Continuare a fare streaming HTTP (per avere il timeout idle di M20), ma accumulare gli eventi in memoria e renderizzarli alla fine.
+
+#### B. Flag CLI
+
+- `--no-stream` / `-S` — stampa la risposta completa alla fine
+- Funziona sia con verbose che con quiet
+- Lo streaming HTTP resta attivo (non si cambia `"stream": True` nel payload) — il buffering è solo lato output
+
+### Task
+
+- [ ] Aggiungere flag `--no-stream` / `-S` a `build_parser()` in `cli.py`
+- [ ] Nuove funzioni `render_verbose_buffered()` e `render_quiet_buffered()` in `output.py` che accumulano gli eventi e stampano alla fine
+- [ ] Wiring in `cli.py`: se `--no-stream`, usare i renderer buffered
+- [ ] Test: `--no-stream` produce lo stesso contenuto del modo streaming (solo il timing cambia)
+- [ ] Test: `-q --no-stream` produce output identico a `-q` (ma buffered)
+- [ ] Aggiornare README con documentazione del flag

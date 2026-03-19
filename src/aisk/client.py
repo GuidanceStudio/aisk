@@ -39,11 +39,17 @@ def stream_chat(
     api_key: str,
     model: str,
     message: str,
-    timeout: float = 120.0,
+    *,
+    read_timeout: float = 120.0,
+    connect_timeout: float = 10.0,
 ) -> Generator[Event, None, None]:
     """Stream a chat completion from an OpenAI-compatible endpoint.
 
     Yields typed events as they arrive from the SSE stream.
+
+    The *read_timeout* is an **idle timeout**: it fires only when no data
+    arrives for the given number of seconds between chunks, so long-running
+    streamed responses will never time out as long as the model keeps sending.
     """
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -55,6 +61,13 @@ def stream_chat(
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+
+    timeout = httpx.Timeout(
+        connect=connect_timeout,
+        read=read_timeout,
+        write=10.0,
+        pool=10.0,
+    )
 
     try:
         with httpx.Client(timeout=timeout) as client:
@@ -121,5 +134,11 @@ def stream_chat(
 
     except httpx.ConnectError as e:
         yield ErrorInfo(message=f"Connection error: {e}")
+    except httpx.ConnectTimeout:
+        yield ErrorInfo(message="Connection timed out")
+    except httpx.ReadTimeout:
+        yield ErrorInfo(
+            message=f"Response timed out (no data for {read_timeout:.0f}s)"
+        )
     except httpx.TimeoutException:
         yield ErrorInfo(message="Request timed out")
