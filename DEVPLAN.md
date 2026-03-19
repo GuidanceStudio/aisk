@@ -535,7 +535,7 @@ Il parametro chiave è `read`: è un timeout **tra chunk successivi**, non sulla
 - [x] Test: verificare che il timeout granulare viene passato correttamente a `httpx.Client`
 - [x] Test: timeout di connessione produce messaggio distinto da timeout di lettura
 
-## M21: Opzione output buffered (`--no-stream`)
+## M21: Opzione output buffered (`--no-stream`) ✅
 
 Attualmente l'output è sempre progressivo (streaming token-by-token). Aggiungere un'opzione per accumulare tutta la risposta e stamparla in un colpo solo alla fine.
 
@@ -568,9 +568,9 @@ Continuare a fare streaming HTTP (per avere il timeout idle di M20), ma accumula
 
 ### Task
 
-- [ ] Aggiungere flag `--no-stream` / `-S` a `build_parser()` in `cli.py`
-- [ ] Nuove funzioni `render_verbose_buffered()` e `render_quiet_buffered()` in `output.py` che accumulano gli eventi e stampano alla fine
-- [ ] Wiring in `cli.py`: se `--no-stream`, usare i renderer buffered
-- [ ] Test: `--no-stream` produce lo stesso contenuto del modo streaming (solo il timing cambia)
-- [ ] Test: `-q --no-stream` produce output identico a `-q` (ma buffered)
-- [ ] Aggiornare README con documentazione del flag
+- [x] Aggiungere flag `--no-stream` / `-S` a `build_parser()` in `cli.py`
+- [x] Nuove funzioni `render_verbose_buffered()` e `render_quiet_buffered()` in `output.py` che accumulano gli eventi e stampano alla fine
+- [x] Wiring in `cli.py`: se `--no-stream`, usare i renderer buffered
+- [x] Test: `--no-stream` produce lo stesso contenuto del modo streaming (solo il timing cambia)
+- [x] Test: `-q --no-stream` produce output identico a `-q` (ma buffered)
+- [x] Aggiornare README con documentazione del flag

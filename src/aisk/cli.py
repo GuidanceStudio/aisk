@@ -6,7 +6,7 @@ from aisk.aliases import resolve_model
 from aisk.client import stream_chat
 from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
-from aisk.output import render_quiet, render_verbose
+from aisk.output import render_quiet, render_quiet_buffered, render_verbose, render_verbose_buffered
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +21,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-q", "--quiet", action="store_true",
         help="Output only the LLM response, no decoration.",
+    )
+    parser.add_argument(
+        "-S", "--no-stream", action="store_true",
+        help="Buffer the full response and print at the end instead of streaming.",
     )
     parser.add_argument("args", nargs="*", help=argparse.SUPPRESS)
 
@@ -110,8 +114,12 @@ def main(argv: list[str] | None = None) -> int:
     model = resolve_model(model_input, cfg.aliases)
     events = stream_chat(cfg.endpoint, cfg.api_key, model, message)
 
-    if parsed.quiet:
+    if parsed.quiet and parsed.no_stream:
+        return render_quiet_buffered(events)
+    elif parsed.quiet:
         return render_quiet(events)
+    elif parsed.no_stream:
+        return render_verbose_buffered(model, message, events)
     else:
         return render_verbose(model, message, events)
 

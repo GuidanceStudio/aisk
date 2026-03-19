@@ -13,6 +13,7 @@ aisk ge31lite "explain monads in Haskell"
 - **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
+- **Buffered mode** — `-S` prints the full response at the end instead of streaming
 - **Stdin support** — `echo "explain this" | aisk cls46`
 - **OpenAI-compatible** — works with OpenRouter (default), or any OpenAI-compatible endpoint
 - **Zero config** — just set your API key and go
@@ -94,6 +95,12 @@ aisk ge31lite 'explain the `ls -la` command'
 
 # Quiet mode — only the LLM response, no decoration
 aisk -q cls46 "translate to English: buongiorno"
+
+# Buffered mode — print full response at the end (no progressive streaming)
+aisk -S ge31lite "explain monads"
+
+# Combine: quiet + buffered — ideal for scripts
+aisk -q -S cls46 "translate to English: buongiorno" | wc -w
 
 # Pipe from stdin
 echo "summarize this" | aisk gpt5mini

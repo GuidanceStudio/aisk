@@ -139,6 +139,26 @@ def test_passthrough_model(capsys, monkeypatch):
     assert "perplexity/sonar" in out
 
 
+def test_no_stream_verbose(capsys, monkeypatch):
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    mock = _mock_stream(ContentChunk("buffered"), UsageInfo(prompt_tokens=1, completion_tokens=1))
+    with patch("aisk.cli.stream_chat", mock):
+        assert main(["-S", "ge31lite", "hello"]) == 0
+    out = capsys.readouterr().out
+    assert "buffered" in out
+    assert "ANSWER" in out
+
+
+def test_no_stream_quiet(capsys, monkeypatch):
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    mock = _mock_stream(ContentChunk("buffered quiet"))
+    with patch("aisk.cli.stream_chat", mock):
+        assert main(["-q", "-S", "ge31lite", "hello"]) == 0
+    out = capsys.readouterr().out
+    assert out == "buffered quiet\n"
+    assert "ANSWER" not in out
+
+
 def test_multiword_message_without_quotes(capsys, monkeypatch):
     """aisk ge3flash what is the CAP theorem — joins all words after model."""
     monkeypatch.setenv("AISK_API_KEY", "test-key")

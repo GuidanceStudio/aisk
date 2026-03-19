@@ -86,3 +86,17 @@ def render_quiet(events: Generator[Event, None, None]) -> int:
             return 1
     _write("\n")
     return 0
+
+
+def render_verbose_buffered(
+    model: str, message: str, events: Generator[Event, None, None]
+) -> int:
+    """Consume all events, then render with full decoration. Returns exit code."""
+    collected: list[Event] = list(events)
+    return render_verbose(model, message, iter(collected))
+
+
+def render_quiet_buffered(events: Generator[Event, None, None]) -> int:
+    """Consume all events, then render content text only. Returns exit code."""
+    collected: list[Event] = list(events)
+    return render_quiet(iter(collected))

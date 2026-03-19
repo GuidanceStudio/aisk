@@ -1,5 +1,5 @@
 from aisk.client import ContentChunk, ErrorInfo, ReasoningChunk, UsageInfo
-from aisk.output import render_quiet, render_verbose
+from aisk.output import render_quiet, render_quiet_buffered, render_verbose, render_verbose_buffered
 
 
 def _events(*items):
@@ -91,3 +91,42 @@ def test_quiet_error(capsys):
     assert rc == 1
     err = capsys.readouterr().err
     assert "fail" in err
+
+
+def test_verbose_buffered_same_content(capsys):
+    """Buffered verbose produces the same content as streaming verbose."""
+    events = _events(
+        ContentChunk("Hello "),
+        ContentChunk("world"),
+        UsageInfo(prompt_tokens=5, completion_tokens=2),
+    )
+    rc = render_verbose_buffered("test/model", "hi", events)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "test/model" in out
+    assert "ANSWER" in out
+    assert "Hello world" in out
+    assert "In 5" in out
+    assert "Out 2" in out
+
+
+def test_quiet_buffered_same_content(capsys):
+    """Buffered quiet produces the same content as streaming quiet."""
+    events = _events(
+        ContentChunk("Hello "),
+        ContentChunk("world"),
+        UsageInfo(prompt_tokens=5, completion_tokens=2),
+    )
+    rc = render_quiet_buffered(events)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out == "Hello world\n"
+    assert "\033[" not in out
+
+
+def test_verbose_buffered_error(capsys):
+    events = _events(ErrorInfo(message="buffered fail"))
+    rc = render_verbose_buffered("m", "q", events)
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "buffered fail" in out
