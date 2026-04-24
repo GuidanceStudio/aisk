@@ -111,7 +111,7 @@ def test_cli_completions_refresh(capsys, monkeypatch):
 def test_generate_shortcuts_default():
     """Default shortcuts produce correct shell functions."""
     output = generate_shortcuts()
-    assert 'ds() { aisk dsv32 "$@"; }' in output
+    assert 'ds() { aisk dsv4f "$@"; }' in output
     assert 'sps() { aisk sps "$@"; }' in output
 
 
@@ -123,9 +123,9 @@ def test_generate_shortcuts_empty():
 
 def test_generate_shortcuts_custom():
     """Custom shortcuts produce correct shell functions."""
-    cfg = Config(shortcuts={"gpt": "gpt54", "cl": "cls46"})
+    cfg = Config(shortcuts={"gpt": "gpt55", "cl": "cls46"})
     output = generate_shortcuts(cfg)
-    assert 'gpt() { aisk gpt54 "$@"; }' in output
+    assert 'gpt() { aisk gpt55 "$@"; }' in output
     assert 'cl() { aisk cls46 "$@"; }' in output
 
 
@@ -133,21 +133,21 @@ def test_bash_includes_shortcuts():
     """Bash completion script includes shortcuts at the end."""
     script = generate_bash()
     assert "complete -F _aisk_completions aisk" in script
-    assert 'ds() { aisk dsv32 "$@"; }' in script
+    assert 'ds() { aisk dsv4f "$@"; }' in script
 
 
 def test_zsh_includes_shortcuts():
     """Zsh completion script includes shortcuts at the end."""
     script = generate_zsh()
     assert "#compdef aisk" in script
-    assert 'ds() { aisk dsv32 "$@"; }' in script
+    assert 'ds() { aisk dsv4f "$@"; }' in script
 
 
 def test_cli_shortcuts(capsys):
     """aisk shortcuts prints the generated functions."""
     assert main(["shortcuts"]) == 0
     out = capsys.readouterr().out
-    assert 'ds() { aisk dsv32 "$@"; }' in out
+    assert 'ds() { aisk dsv4f "$@"; }' in out
     assert 'sps() { aisk sps "$@"; }' in out
 
 
@@ -165,7 +165,7 @@ def test_shortcuts_from_custom_conf(tmp_path, monkeypatch):
     conf = tmp_path / "conf.toml"
     conf.write_text(
         '[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n\n'
-        '[shortcuts]\nmyds = "dsv32"\nmysps = "sps"\n'
+        '[shortcuts]\nmyds = "dsv4f"\nmysps = "sps"\n'
     )
     monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
@@ -173,10 +173,10 @@ def test_shortcuts_from_custom_conf(tmp_path, monkeypatch):
     monkeypatch.delenv("AISK_API_KEY", raising=False)
 
     output = generate_shortcuts()
-    assert 'myds() { aisk dsv32 "$@"; }' in output
+    assert 'myds() { aisk dsv4f "$@"; }' in output
     assert 'mysps() { aisk sps "$@"; }' in output
     # Defaults are merged
-    assert 'ds() { aisk dsv32 "$@"; }' in output
+    assert 'ds() { aisk dsv4f "$@"; }' in output
 
 
 def test_shortcuts_in_eval_flow(tmp_path, monkeypatch):
@@ -208,4 +208,4 @@ def test_cli_shortcuts_no_config(capsys, tmp_path, monkeypatch):
     # So this test validates the default shortcuts still show up
     assert main(["shortcuts"]) == 0
     out = capsys.readouterr().out
-    assert 'ds() { aisk dsv32 "$@"; }' in out
+    assert 'ds() { aisk dsv4f "$@"; }' in out

@@ -1,5 +1,11 @@
 import os
+import sys
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from aisk.config import (
     Config,
@@ -11,6 +17,16 @@ from aisk.config import (
     load_config,
     init_config,
 )
+
+
+def test_default_conf_toml_matches_default_aliases():
+    """DEFAULT_CONF_TOML [aliases]/[shortcuts] must equal the Python dicts.
+
+    Guards against drift between the two sources of truth in config.py.
+    """
+    parsed = tomllib.loads(DEFAULT_CONF_TOML)
+    assert parsed["aliases"] == DEFAULT_ALIASES
+    assert parsed["shortcuts"] == DEFAULT_SHORTCUTS
 
 
 def test_default_config():
@@ -102,7 +118,7 @@ def test_load_config_with_shortcuts(tmp_path, monkeypatch):
     conf = tmp_path / "conf.toml"
     conf.write_text(
         '[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n\n'
-        '[shortcuts]\ngpt = "gpt54"\ncl = "cls46"\n'
+        '[shortcuts]\ngpt = "gpt55"\ncl = "cls46"\n'
     )
     monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
@@ -110,10 +126,10 @@ def test_load_config_with_shortcuts(tmp_path, monkeypatch):
     monkeypatch.delenv("AISK_API_KEY", raising=False)
 
     cfg = load_config()
-    assert cfg.shortcuts["gpt"] == "gpt54"
+    assert cfg.shortcuts["gpt"] == "gpt55"
     assert cfg.shortcuts["cl"] == "cls46"
     # Defaults are also present
-    assert cfg.shortcuts["ds"] == "dsv32"
+    assert cfg.shortcuts["ds"] == "dsv4f"
 
 
 def test_load_config_no_shortcuts_section(tmp_path, monkeypatch):
