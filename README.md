@@ -88,7 +88,7 @@ aisk ge31lite "what is the CAP theorem?"
 aisk ge31lite what is the CAP theorem
 
 # Use quotes if your message contains shell special characters: () ! > | &
-aisk glm5 "what is f(x) = x^2 + (x-1)?"
+aisk glm51 "what is f(x) = x^2 + (x-1)?"
 
 # Use single quotes for backticks
 aisk ge31lite 'explain the `ls -la` command'
@@ -150,14 +150,14 @@ Define short shell functions that call `aisk` with a specific model. Configure t
 
 ```toml
 [shortcuts]
-ds = "dsv32"
+ds = "dsv4f"
 sps = "sps"
-# gpt = "gpt54"
+# gpt = "gpt55"
 # cl = "cls46"
 # ge = "ge25flash"
 ```
 
-Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsv32 "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
+Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsv4f "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
 
 ```bash
 # See generated functions

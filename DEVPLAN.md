@@ -574,3 +574,50 @@ Continuare a fare streaming HTTP (per avere il timeout idle di M20), ma accumula
 - [x] Test: `--no-stream` produce lo stesso contenuto del modo streaming (solo il timing cambia)
 - [x] Test: `-q --no-stream` produce output identico a `-q` (ma buffered)
 - [x] Aggiornare README con documentazione del flag
+
+## M22: Aggiornamento alias modelli (apr 2026) ✅
+
+Il pool di modelli in `DEFAULT_ALIASES` e `DEFAULT_CONF_TOML` (`config.py`) è invecchiato. Fra il 18 marzo e il 24 aprile 2026 sono usciti nuovi modelli rilevanti — DeepSeek V4 (flash + pro, 1M ctx, prezzi molto aggressivi), Claude Opus 4.7, GPT-5.5, GLM 5.1, Kimi K2.6, MiniMax M2.7, Qwen 3.6 Plus. Rinnoviamo il catalogo sostituendo i vecchi alias con le versioni correnti.
+
+### Sostituzioni (vecchio → nuovo)
+
+| Vecchio alias | Vecchio modello | Nuovo alias | Nuovo modello | I/O $/M |
+|---|---|---|---|---|
+| `clo46` | `anthropic/claude-opus-4.6` | `clo47` | `anthropic/claude-opus-4.7` | 5 / 25 |
+| `gpt54` | `openai/gpt-5.4` | `gpt55` | `openai/gpt-5.5` | 5 / 30 |
+| `dsv32` | `deepseek/deepseek-v3.2` | `dsv4f` | `deepseek/deepseek-v4-flash` | 0.14 / 0.28 |
+| `dsr1` | `deepseek/deepseek-r1` | `dsv4p` | `deepseek/deepseek-v4-pro` | 1.74 / 3.48 |
+| `glm5` | `z-ai/glm-5` | `glm51` | `z-ai/glm-5.1` | 1.05 / 3.50 |
+| `m25` | `minimax/minimax-m2.5` | `m27` | `minimax/minimax-m2.7` | 0.30 / 1.20 |
+| `qwen35p` | `qwen/qwen3.5-plus-02-15` | `qwen36p` | `qwen/qwen3.6-plus` | — |
+| `qwen35` | `qwen/qwen3.5-397b-a17b` | *(rimosso)* | — | — |
+
+### Aggiunte
+
+| Nuovo alias | Modello | I/O $/M | Note |
+|---|---|---|---|
+| `kimi26` | `moonshotai/kimi-k2.6` | 0.74 / 4.66 | coding |
+| `gpt55pro` | `openai/gpt-5.5-pro` | 30 / 180 | reasoning top tier |
+
+### Non modificati
+
+- `ge31pro`, `ge31lite`, `ge25flash` (gemini-3.1-flash-lite-preview è già l'alias corrente)
+- `cls46`, `clh45` (Sonnet 4.7 / Haiku 4.6 non ancora rilasciati al 24 apr 2026)
+- `o4m`, `gpt5mini`, `gpt5nano` (tier economici OpenAI, li lasciamo)
+- `s`, `sps` (Perplexity)
+- `mistral`, `l4scout`, `l4mav`
+
+### Shortcut
+
+- `ds` → repuntare da `dsv32` a `dsv4f` (nuovo default DeepSeek, economico e 1M ctx).
+
+### Task
+
+- [x] Aggiornare `DEFAULT_ALIASES` in `src/aisk/config.py` con le sostituzioni e aggiunte sopra
+- [x] Aggiornare `DEFAULT_CONF_TOML` con gli stessi alias (sezione `[aliases]`)
+- [x] Aggiornare `DEFAULT_SHORTCUTS` e `[shortcuts]` in `DEFAULT_CONF_TOML`: `ds = "dsv4f"`
+- [x] Aggiornare i test in `tests/` che referenziano gli alias rinominati/rimossi
+- [x] Verificare via `grep` che nessun altro file (README, docs) contenga gli alias vecchi e, se sì, aggiornarli
+- [x] Nota: il `conf.toml` già installato nella home dell'utente non viene toccato — la sostituzione riguarda solo i default del codice e il template di `aisk init`
+- [x] Aggiunto `tests/conftest.py`: fixture autouse `isolate_user_config` che redirige `CONFIG_DIR/FILE/ENV_FILE` a `tmp_path` per tutti i test. Era un problema pre-esistente di hygiene (alcuni test leggevano il `~/.aisk/conf.toml` reale del dev), riemerso cambiando i default; la fix è ortogonale ma necessaria
+- [x] Aggiunto test `test_default_conf_toml_matches_default_aliases`: parseggia `DEFAULT_CONF_TOML` e verifica coerenza con `DEFAULT_ALIASES`/`DEFAULT_SHORTCUTS` — guardia contro drift fra le due sorgenti di verità in `config.py`
