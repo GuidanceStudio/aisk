@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="git+https://github.com/Ymx1ZQ/aisk.git"
+REPO="git+https://github.com/GuidanceStudio/aisk.git"
 
 # Colors
 BLUE='\033[38;5;33m'
