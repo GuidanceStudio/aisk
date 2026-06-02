@@ -621,3 +621,86 @@ Il pool di modelli in `DEFAULT_ALIASES` e `DEFAULT_CONF_TOML` (`config.py`) è i
 - [x] Nota: il `conf.toml` già installato nella home dell'utente non viene toccato — la sostituzione riguarda solo i default del codice e il template di `aisk init`
 - [x] Aggiunto `tests/conftest.py`: fixture autouse `isolate_user_config` che redirige `CONFIG_DIR/FILE/ENV_FILE` a `tmp_path` per tutti i test. Era un problema pre-esistente di hygiene (alcuni test leggevano il `~/.aisk/conf.toml` reale del dev), riemerso cambiando i default; la fix è ortogonale ma necessaria
 - [x] Aggiunto test `test_default_conf_toml_matches_default_aliases`: parseggia `DEFAULT_CONF_TOML` e verifica coerenza con `DEFAULT_ALIASES`/`DEFAULT_SHORTCUTS` — guardia contro drift fra le due sorgenti di verità in `config.py`
+
+## M23: Review fix — coerenza e hygiene ✅
+
+Esito della review del 2 giu 2026 (a parità di funzionalità). Fix raggruppati per priorità.
+
+### Bug / incoerenze reali
+
+- [x] **Completion `-S`/`--no-stream`** — `completions.py` conosce solo `-q`/`--quiet`: il flag `-S` introdotto in M21 non è stato propagato. Aggiornare bash e zsh:
+  - guardia che attiva il completamento modelli anche dopo `-S`/`--no-stream` (`completions.py:14` bash, `:34` zsh)
+  - aggiungere `-S --no-stream` alla lista flag completabili (`completions.py:19`)
+- [x] **Install via HTTPS** — il repo è pubblico (la one-liner `curl` usa `raw.githubusercontent.com` senza auth), ma `install.sh:4` e il README usano `git+ssh://git@github.com/...`, che richiede una chiave SSH su GitHub anche solo per installare. Passare a `git+https://github.com/Ymx1ZQ/aisk.git` in `install.sh` e nel README (la sezione "From local clone" può restare invariata; il remote `origin` di sviluppo resta SSH).
+- [x] **Permessi `.env`** — `config.py` scrive `~/.aisk/.env` con l'umask di default (di solito `644`), pur contenendo la API key. Aggiungere `os.chmod(ENV_FILE, 0o600)` dopo ogni scrittura (`init_config` e `_write_env`).
+
+### Pulizie minori
+
+- [x] `client.py:108` — rimuovere la riga morta `reasoning = 0` (riassegnata subito dopo a `:110`).
+- [x] `cli.py:16` — aggiornare la stringa `usage=` di argparse con `-S`/`--no-stream` e il sottocomando `completions`.
+- [x] `install.sh` — l'etichetta `[1/3]` viene stampata due volte (ramo "installo uv" + ramo install/upgrade): rinumerare o unificare.
+- [x] `config.py` / `DEFAULT_CONF_TOML` — l'esempio shortcut `sps = "sps"` (nome shortcut identico all'alias) è confuso: sostituire con un esempio chiaro tipo `news = "sps"`.
+
+### Aggiornamento test
+
+- [x] Aggiornare/estendere i test di `tests/test_completions.py` per coprire la presenza di `-S`/`--no-stream` nello script generato.
+- [x] Verificare che la suite resti verde (`pytest`).
+
+### Dedup sorgente alias (singola fonte di verità)
+
+Eliminare la doppia manutenzione fra `DEFAULT_ALIASES` (dict) e `DEFAULT_CONF_TOML` (stringa) in `config.py`.
+
+- [x] Introdurre una struttura unica `_ALIAS_GROUPS: list[tuple[str, list[tuple[str, str]]]]` (etichetta provider → lista `(alias, modello)`), che preserva il raggruppamento usato nei commenti del TOML.
+- [x] Derivare `DEFAULT_ALIASES` da `_ALIAS_GROUPS` (comprehension).
+- [x] Generare `DEFAULT_CONF_TOML` con un helper `_render_default_conf(endpoint)` a partire da `_ALIAS_GROUPS` + `DEFAULT_SHORTCUTS` (commenti `# Provider` per gruppo + sezione `[shortcuts]` con header e esempi commentati).
+- [x] Semplificare `_write_conf(endpoint)` per usare `_render_default_conf(endpoint)`, eliminando il fragile `str.replace` sull'endpoint.
+- [x] Il test `test_default_conf_toml_matches_default_aliases` resta verde (ora diventa la guardia che la generazione è corretta).
+
+### Note / fuori scope
+
+- Timeout (`read_timeout`/`connect_timeout` hardcoded in `stream_chat`) non esposti in `conf.toml`: possibile estensione futura, fuori scope qui.
+
+## M24: Aggiornamento alias modelli (giugno 2026) ✅
+
+Fonte: OpenRouter, giugno 2026. Aggiornamento mirato: la maggior parte degli alias di M22 (apr 2026) è ancora corrente.
+
+### Sostituzioni
+
+| Vecchio alias | Vecchio modello | Nuovo alias | Nuovo modello | I/O $/M |
+|---|---|---|---|---|
+| `clo47` | `anthropic/claude-opus-4.7` | `clo48` | `anthropic/claude-opus-4.8` | 5 / 25 |
+| `qwen36p` | `qwen/qwen3.6-plus` | `qwen37` | `qwen/qwen3.7-max` | 1.25 / 3.75 |
+
+### Aggiunte
+
+| Nuovo alias | Modello | I/O $/M | Note |
+|---|---|---|---|
+| `ge35flash` | `google/gemini-3.5-flash` | 1.50 / 9 | nuovo default Gemini, near-Pro, 1M ctx, multimodale |
+| `ge25lite` | `google/gemini-2.5-flash-lite` | 0.10 / 0.40 | tier ultra-economico, 1M ctx |
+
+### Rimozioni
+
+| Alias | Modello | Motivo |
+|---|---|---|
+| `ge25flash` | `google/gemini-2.5-flash` | superato: tier "flash" coperto da `ge35flash`, economico da `ge25lite`/`ge31lite` |
+
+### Non modificati (ancora correnti a giu 2026)
+
+- Google: `ge31pro` (`gemini-3.1-pro-preview` — Gemini 3.5 Pro non ancora su OpenRouter), `ge31lite` (tier economico)
+- OpenAI: `gpt55`, `gpt55pro`, `gpt5mini`, `gpt5nano`, `o4m` (GPT-5.5 ancora il top)
+- Anthropic: `cls46` (Sonnet 4.6), `clh45` (Haiku 4.5) — ancora i correnti
+- DeepSeek: `dsv4f`, `dsv4p` (v4 flash/pro tuttora correnti)
+- Altri: `glm51` (GLM 5.1), `kimi26` (Kimi K2.6), `m27` (Minimax M2.7), `mistral`, `l4scout`, `l4mav`
+- Perplexity: `s`, `sps`
+
+### Shortcut
+
+- Nessun cambio necessario: `ds = "dsv4f"` resta valido. (`sps` come shortcut va comunque rivisto in M23.)
+
+### Task
+
+- [x] Aggiornare `_ALIAS_GROUPS` in `src/aisk/config.py` (sostituzioni + aggiunte + rimozione sopra) — dopo il dedup di M23 è l'unica sorgente, `DEFAULT_ALIASES` e `DEFAULT_CONF_TOML` si aggiornano da sé
+- [x] Verificare che `test_default_conf_toml_matches_default_aliases` resti verde (coerenza dict ↔ TOML)
+- [x] Aggiornare i test che referenziano `clo47` / `qwen36p` / `ge25flash`; togliere `ge25lite` dalla lista "removed" in `tests/test_aliases.py` (ora è un alias valido) e aggiungere asserzioni per `clo48` / `qwen37` / `ge35flash` / `ge25lite`
+- [x] `grep` su README/docs per gli alias rinominati/rimossi e aggiornarli (es. esempi nel README, riga `# ge = "ge25flash"`)
+- [x] Nota: il `conf.toml` già presente nella home dell'utente non viene toccato — cambia solo il default del codice e il template di `aisk init`

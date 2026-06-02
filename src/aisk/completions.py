@@ -11,12 +11,12 @@ _aisk_completions() {{
     cur="${{COMP_WORDS[COMP_CWORD]}}"
     prev="${{COMP_WORDS[COMP_CWORD-1]}}"
 
-    if [[ $COMP_CWORD -eq 1 ]] || [[ "$prev" == "-q" ]] || [[ "$prev" == "--quiet" ]]; then
+    if [[ $COMP_CWORD -eq 1 ]] || [[ "$prev" == "-q" ]] || [[ "$prev" == "--quiet" ]] || [[ "$prev" == "-S" ]] || [[ "$prev" == "--no-stream" ]]; then
         local models="{models}"
         local subcommands="init models shortcuts completions"
         COMPREPLY=( $(compgen -W "$models $subcommands" -- "$cur") )
     elif [[ "$cur" == -* ]]; then
-        COMPREPLY=( $(compgen -W "-q --quiet --version --help" -- "$cur") )
+        COMPREPLY=( $(compgen -W "-q --quiet -S --no-stream --version --help" -- "$cur") )
     fi
 }}
 complete -F _aisk_completions aisk
@@ -29,9 +29,9 @@ _aisk() {{
     local -a models subcommands flags
     models=({models})
     subcommands=(init models shortcuts completions)
-    flags=(-q --quiet --version --help)
+    flags=(-q --quiet -S --no-stream --version --help)
 
-    if (( CURRENT == 2 )) || [[ "${{words[2]}}" == "-q" ]] || [[ "${{words[2]}}" == "--quiet" ]]; then
+    if (( CURRENT == 2 )) || [[ "${{words[2]}}" == "-q" ]] || [[ "${{words[2]}}" == "--quiet" ]] || [[ "${{words[2]}}" == "-S" ]] || [[ "${{words[2]}}" == "--no-stream" ]]; then
         _describe 'model or command' models -- subcommands -- flags
     fi
 }}

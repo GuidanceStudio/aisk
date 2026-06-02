@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="git+ssh://git@github.com/Ymx1ZQ/aisk.git"
+REPO="git+https://github.com/Ymx1ZQ/aisk.git"
 
 # Colors
 BLUE='\033[38;5;33m'
@@ -20,7 +20,7 @@ echo ""
 
 # Install uv if missing
 if ! command -v uv &>/dev/null; then
-    echo -e "  ${CYAN}[1/3]${RESET} Installing uv..."
+    echo -e "  ${DIM}uv not found — installing...${RESET}"
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
     echo ""

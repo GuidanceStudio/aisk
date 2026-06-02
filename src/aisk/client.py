@@ -105,7 +105,6 @@ def stream_chat(
                     # Usage info (final chunk)
                     usage = chunk.get("usage")
                     if usage:
-                        reasoning = 0
                         details = usage.get("completion_tokens_details") or {}
                         reasoning = details.get("reasoning_tokens", 0)
                         cost = usage.get("cost", usage.get("total_cost"))

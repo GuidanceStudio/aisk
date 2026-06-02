@@ -17,6 +17,21 @@ def test_bash_contains_subcommands():
     assert "completions" in script
 
 
+def test_bash_completes_after_no_stream_flags():
+    """Model completion triggers after -S/--no-stream, and the flags are offered."""
+    script = generate_bash()
+    assert '"$prev" == "-S"' in script
+    assert '"$prev" == "--no-stream"' in script
+    assert "-S --no-stream" in script
+
+
+def test_zsh_completes_after_no_stream_flags():
+    script = generate_zsh()
+    assert '"${words[2]}" == "-S"' in script
+    assert '"${words[2]}" == "--no-stream"' in script
+    assert "-S --no-stream" in script
+
+
 def test_zsh_contains_aliases():
     script = generate_zsh()
     assert "#compdef aisk" in script
@@ -112,7 +127,7 @@ def test_generate_shortcuts_default():
     """Default shortcuts produce correct shell functions."""
     output = generate_shortcuts()
     assert 'ds() { aisk dsv4f "$@"; }' in output
-    assert 'sps() { aisk sps "$@"; }' in output
+    assert 'news() { aisk sps "$@"; }' in output
 
 
 def test_generate_shortcuts_empty():
@@ -148,7 +163,7 @@ def test_cli_shortcuts(capsys):
     assert main(["shortcuts"]) == 0
     out = capsys.readouterr().out
     assert 'ds() { aisk dsv4f "$@"; }' in out
-    assert 'sps() { aisk sps "$@"; }' in out
+    assert 'news() { aisk sps "$@"; }' in out
 
 
 def test_shortcuts_subcommand_in_completions():
