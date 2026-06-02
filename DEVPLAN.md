@@ -868,7 +868,7 @@ One-shot invariato: l'errore è già immediato (una sola richiesta).
 
 
 **Note esecuzione (TDD):** preflight saltato anche quando `model_input` è `None` (es. resume: già validato). Il fail-fast sul primo turno in errore sostituisce il vecchio "rollback e continua" SOLO finché non c'è stato uno scambio riuscito; dopo un successo, un errore fa rollback e prosegue. Cache modelli in `~/.aisk/models-cache.json` (chmod 600).
-## M32: `--resume` — continua l'ultima conversazione
+## M32: `--resume` — continua l'ultima conversazione ✅
 
 Richiesta: dopo `aisk dsv4f "ciao"` (one-shot), poter continuare quella conversazione con `aisk --resume`, senza che si faccia casino con altre sessioni aisk aperte in parallelo.
 
@@ -882,13 +882,15 @@ Richiesta: dopo `aisk dsv4f "ciao"` (one-shot), poter continuare quella conversa
 
 ### Task
 
-- [ ] Nuovo `session.py` (o in `config.py`): `session_path()` (key da `getppid()`), `save_session(model, messages)`, `load_session()` (corrente → fallback più recente), pruning > 7gg, `chmod 600`.
-- [ ] `cli.py`: flag `--resume`; ramo dedicato che carica la sessione, instrada a chat (no msg) o one-shot (con msg); errore se niente da riprendere.
-- [ ] `cli.py`/one-shot: "tee" sugli eventi per catturare il testo assistant e persistere `{user, assistant}` dopo una risposta riuscita.
-- [ ] `chat.py`: `chat()` accetta `history` precaricato e persiste dopo ogni turno riuscito; integra il recap iniziale.
-- [ ] Test: save/load round-trip; scoping per-PID (key diversa → file diverso); fallback al più recente; `--resume` senza sessione → errore; continuazione one-shot appende e ripersiste; pruning TTL.
-- [ ] README: documentare `--resume` (e il comportamento per-terminale).
+- [x] Nuovo `session.py` (o in `config.py`): `session_path()` (key da `getppid()`), `save_session(model, messages)`, `load_session()` (corrente → fallback più recente), pruning > 7gg, `chmod 600`.
+- [x] `cli.py`: flag `--resume`; ramo dedicato che carica la sessione, instrada a chat (no msg) o one-shot (con msg); errore se niente da riprendere.
+- [x] `cli.py`/one-shot: "tee" sugli eventi per catturare il testo assistant e persistere `{user, assistant}` dopo una risposta riuscita.
+- [x] `chat.py`: `chat()` accetta `history` precaricato e persiste dopo ogni turno riuscito; integra il recap iniziale.
+- [x] Test: save/load round-trip; scoping per-PID (key diversa → file diverso); fallback al più recente; `--resume` senza sessione → errore; continuazione one-shot appende e ripersiste; pruning TTL.
+- [x] README: documentare `--resume` (e il comportamento per-terminale).
 
+
+**Note esecuzione (TDD):** la persistenza è ora attiva anche per il one-shot normale (non solo resume), via `_run_oneshot` con tee sugli eventi → ogni `aisk MODEL "msg"` riuscito salva la sessione. Chat salva dopo ogni turno. Scoping per `getppid()`, fallback al più recente.
 ## M33: Prompt caching sempre attivo (default)
 
 Ridurre i costi quando si rimanda lo storico (chat/resume) e su prompt lunghi. Caching attivo di default, senza intervento dell'utente.

@@ -10,6 +10,7 @@ aisk ge31lite "explain monads in Haskell"
 
 - **Streaming responses** — tokens appear as they arrive
 - **Interactive chat** — `aisk cls46` with no message opens a multi-turn REPL
+- **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
 - **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
 - **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
@@ -135,6 +136,11 @@ aisk ge31lite "what is the CAP theorem?"
 # Each reply shows its cost and the running conversation total.
 # A mistyped model is caught up front (e.g. `aisk dsv4` → "did you mean dsv4f?").
 aisk cls46
+
+# Resume the last conversation — continue in chat, or one-shot with a message
+aisk dsv4f "explain monads"
+aisk --resume                  # reopens it as a chat, history preloaded
+aisk --resume "give an example"  # one-shot follow-up
 
 # No quotes needed — all words after the model are joined automatically
 aisk ge31lite what is the CAP theorem

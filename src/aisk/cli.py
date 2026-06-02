@@ -1,10 +1,10 @@
 import argparse
 import sys
 
-from aisk import __version__
+from aisk import __version__, session
 from aisk.aliases import resolve_model
 from aisk.chat import chat
-from aisk.client import stream_chat
+from aisk.client import ContentChunk, stream_chat
 from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config, sync_aliases
 from aisk.output import render_quiet, render_quiet_buffered, render_verbose, render_verbose_buffered
@@ -27,15 +27,77 @@ def build_parser() -> argparse.ArgumentParser:
         "-S", "--no-stream", action="store_true",
         help="Buffer the full response and print at the end instead of streaming.",
     )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Continue the last conversation (chat, or one-shot with a message).",
+    )
     parser.add_argument("args", nargs="*", help=argparse.SUPPRESS)
 
     return parser
+
+
+def _run_oneshot(cfg, model: str, messages: list[dict], *, quiet: bool, no_stream: bool) -> int:
+    """Stream a one-shot reply, render it, and persist the conversation on success."""
+    collected: list[str] = []
+
+    def _tee(events):
+        for event in events:
+            if isinstance(event, ContentChunk):
+                collected.append(event.text)
+            yield event
+
+    events = _tee(stream_chat(cfg.endpoint, cfg.api_key, model, messages))
+    header = messages[-1]["content"]
+    if quiet and no_stream:
+        code = render_quiet_buffered(events)
+    elif quiet:
+        code = render_quiet(events)
+    elif no_stream:
+        code = render_verbose_buffered(model, header, events)
+    else:
+        code = render_verbose(model, header, events)
+
+    if code == 0 and collected:
+        session.save_session(
+            model, messages + [{"role": "assistant", "content": "".join(collected)}]
+        )
+    return code
+
+
+def _resume(parsed, positional: list[str]) -> int:
+    """Handle `aisk --resume [message]`."""
+    data = session.load_session()
+    if not data:
+        print("Error: nothing to resume.", file=sys.stderr)
+        return 1
+    model = data["model"]
+    history = list(data["messages"])
+
+    message: str | None = " ".join(positional) if positional else None
+    if not message and not sys.stdin.isatty():
+        message = sys.stdin.read().strip() or None
+
+    try:
+        cfg = ensure_config()
+    except ConfigError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    if message is None:
+        print(f"Resuming {model} — {len(history)} messages", file=sys.stderr)
+        return chat(model, cfg, history=history)
+
+    messages = history + [{"role": "user", "content": message}]
+    return _run_oneshot(cfg, model, messages, quiet=parsed.quiet, no_stream=parsed.no_stream)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     parsed = parser.parse_args(argv)
     positional = parsed.args
+
+    if parsed.resume:
+        return _resume(parsed, positional)
 
     if not positional:
         parser.print_help()
@@ -133,16 +195,10 @@ def main(argv: list[str] | None = None) -> int:
     if interactive_chat:
         return chat(model, cfg, model_input=model_input)
 
-    events = stream_chat(cfg.endpoint, cfg.api_key, model, message)
-
-    if parsed.quiet and parsed.no_stream:
-        return render_quiet_buffered(events)
-    elif parsed.quiet:
-        return render_quiet(events)
-    elif parsed.no_stream:
-        return render_verbose_buffered(model, message, events)
-    else:
-        return render_verbose(model, message, events)
+    return _run_oneshot(
+        cfg, model, [{"role": "user", "content": message}],
+        quiet=parsed.quiet, no_stream=parsed.no_stream,
+    )
 
 
 if __name__ == "__main__":
