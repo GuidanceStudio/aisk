@@ -891,7 +891,7 @@ Richiesta: dopo `aisk dsv4f "ciao"` (one-shot), poter continuare quella conversa
 
 
 **Note esecuzione (TDD):** la persistenza è ora attiva anche per il one-shot normale (non solo resume), via `_run_oneshot` con tee sugli eventi → ogni `aisk MODEL "msg"` riuscito salva la sessione. Chat salva dopo ogni turno. Scoping per `getppid()`, fallback al più recente.
-## M33: Prompt caching sempre attivo (default)
+## M33: Prompt caching sempre attivo (default) ✅
 
 Ridurre i costi quando si rimanda lo storico (chat/resume) e su prompt lunghi. Caching attivo di default, senza intervento dell'utente.
 
@@ -910,8 +910,10 @@ Quindi "sempre attivo" = automatico dove supportato + breakpoint espliciti dove 
 
 ### Task
 
-- [ ] `config.py`: `Config.prompt_cache: bool = True`; `load_config` lo deriva da `AISK_PROMPT_CACHE` (default True).
-- [ ] `client.py`: `_supports_explicit_cache(model)` (claude/anthropic/gemini/google) + `_apply_prompt_cache(messages, model, endpoint)` (gating su `openrouter.ai` nell'endpoint, marca l'ultimo blocco); `stream_chat(..., prompt_cache=True)` applica la trasformazione dopo la normalizzazione dei messaggi.
-- [ ] `cli.py`/`chat.py`: passare `cfg.prompt_cache` a `stream_chat` (one-shot e chat).
-- [ ] Test: anthropic+openrouter → ultimo messaggio in block-form con `cache_control`; openai+openrouter → invariato; endpoint non-openrouter → invariato; `prompt_cache=False` → invariato; idempotenza/struttura blocchi.
-- [ ] README: nota su prompt caching attivo di default (+ `AISK_PROMPT_CACHE=0` per disattivarlo).
+- [x] `config.py`: `Config.prompt_cache: bool = True`; `load_config` lo deriva da `AISK_PROMPT_CACHE` (default True).
+- [x] `client.py`: `_supports_explicit_cache(model)` (claude/anthropic/gemini/google) + `_apply_prompt_cache(messages, model, endpoint)` (gating su `openrouter.ai` nell'endpoint, marca l'ultimo blocco); `stream_chat(..., prompt_cache=True)` applica la trasformazione dopo la normalizzazione dei messaggi.
+- [x] `cli.py`/`chat.py`: passare `cfg.prompt_cache` a `stream_chat` (one-shot e chat).
+- [x] Test: anthropic+openrouter → ultimo messaggio in block-form con `cache_control`; openai+openrouter → invariato; endpoint non-openrouter → invariato; `prompt_cache=False` → invariato; idempotenza/struttura blocchi.
+- [x] README: nota su prompt caching attivo di default (+ `AISK_PROMPT_CACHE=0` per disattivarlo).
+
+**Note esecuzione (TDD):** breakpoint `cache_control` aggiunto solo per Anthropic/Gemini via OpenRouter (gating su `openrouter.ai` nell'endpoint); altri provider cachano in automatico e su endpoint generici stretti si evita un possibile 400. Default ON; `AISK_PROMPT_CACHE=0/false/no/off` per disattivare.

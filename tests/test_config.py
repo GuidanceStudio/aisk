@@ -85,6 +85,16 @@ def test_load_config_env_override(tmp_path, monkeypatch):
     assert cfg.api_key == "env-key"
 
 
+def test_prompt_cache_default_on():
+    assert Config().prompt_cache is True
+    assert load_config().prompt_cache is True
+
+
+def test_prompt_cache_env_disable(monkeypatch):
+    monkeypatch.setenv("AISK_PROMPT_CACHE", "0")
+    assert load_config().prompt_cache is False
+
+
 def test_endpoint_env_override_default(monkeypatch):
     """AISK_ENDPOINT overrides the built-in default."""
     monkeypatch.setenv("AISK_ENDPOINT", "https://custom.example/v1/chat/completions")

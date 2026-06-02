@@ -34,6 +34,35 @@ class ErrorInfo:
 Event = ContentChunk | ReasoningChunk | UsageInfo | ErrorInfo
 
 
+def _supports_explicit_cache(model: str) -> bool:
+    """Whether the model needs an explicit cache_control breakpoint (vs automatic)."""
+    m = model.lower()
+    return any(p in m for p in ("claude", "anthropic", "gemini", "google"))
+
+
+def _apply_prompt_cache(messages: list[dict], model: str, endpoint: str) -> list[dict]:
+    """Mark the last message with a cache_control breakpoint, caching the whole
+    prefix. Only for Anthropic/Gemini via OpenRouter — others cache automatically,
+    and generic endpoints might reject the field. Returns a new list (no mutation)."""
+    if "openrouter.ai" not in endpoint or not _supports_explicit_cache(model) or not messages:
+        return messages
+
+    msgs = [dict(m) for m in messages]
+    last = msgs[-1]
+    content = last.get("content")
+    if isinstance(content, str):
+        last["content"] = [
+            {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+        ]
+    elif isinstance(content, list) and content and isinstance(content[-1], dict):
+        blocks = [dict(b) if isinstance(b, dict) else b for b in content]
+        blocks[-1] = {**blocks[-1], "cache_control": {"type": "ephemeral"}}
+        last["content"] = blocks
+    else:
+        return messages
+    return msgs
+
+
 def _models_url(endpoint: str) -> str | None:
     """Derive the OpenAI-compatible /models URL from a chat-completions endpoint."""
     suffix = "/chat/completions"
@@ -73,6 +102,7 @@ def stream_chat(
     model: str,
     messages: str | list[dict],
     *,
+    prompt_cache: bool = True,
     read_timeout: float = 120.0,
     connect_timeout: float = 10.0,
 ) -> Generator[Event, None, None]:
@@ -80,6 +110,9 @@ def stream_chat(
 
     *messages* may be a single user message string (wrapped automatically) or a
     full list of ``{"role": ..., "content": ...}`` dicts for multi-turn chat.
+
+    When *prompt_cache* is set, a cache_control breakpoint is added for providers
+    that need it (Anthropic/Gemini via OpenRouter); others cache automatically.
 
     Yields typed events as they arrive from the SSE stream.
 
@@ -89,6 +122,8 @@ def stream_chat(
     """
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
+    if prompt_cache:
+        messages = _apply_prompt_cache(messages, model, endpoint)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
