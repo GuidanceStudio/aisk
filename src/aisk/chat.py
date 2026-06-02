@@ -3,6 +3,12 @@ from __future__ import annotations
 import difflib
 from typing import Generator
 
+try:
+    # Loading readline gives input() line editing + ↑/↓ prompt history for free.
+    import readline  # noqa: F401
+except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
+    pass
+
 from aisk import cache, session
 from aisk.client import (
     ContentChunk,
