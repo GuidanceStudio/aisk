@@ -169,15 +169,81 @@ def test_no_stream_quiet(capsys, monkeypatch):
     assert "ANSWER" not in out
 
 
+def test_oneshot_persists_session(monkeypatch):
+    """A one-shot call saves the exchange so it can be resumed."""
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    mock = _mock_stream(ContentChunk("answer"))
+    with patch("aisk.cli.stream_chat", mock):
+        assert main(["dsv4f", "ciao"]) == 0
+    from aisk import session
+    s = session.load_session()
+    assert s["model"] == "deepseek/deepseek-v4-flash"
+    assert s["messages"] == [
+        {"role": "user", "content": "ciao"},
+        {"role": "assistant", "content": "answer"},
+    ]
+
+
+def test_resume_no_session_errors(capsys, monkeypatch):
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    assert main(["--resume"]) == 1
+    assert "nothing to resume" in capsys.readouterr().err.lower()
+
+
+def test_resume_oneshot_continuation(monkeypatch):
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    from aisk import session
+    session.save_session(
+        "deepseek/deepseek-v4-flash",
+        [{"role": "user", "content": "ciao"}, {"role": "assistant", "content": "hey"}],
+    )
+    received = {}
+
+    def cap(endpoint, api_key, model, messages, **kw):
+        received["model"] = model
+        received["messages"] = [m.copy() for m in messages]
+        yield ContentChunk("more")
+
+    with patch("aisk.cli.stream_chat", cap):
+        assert main(["--resume", "e", "poi?"]) == 0
+
+    assert received["model"] == "deepseek/deepseek-v4-flash"
+    assert received["messages"][0] == {"role": "user", "content": "ciao"}
+    assert received["messages"][-1] == {"role": "user", "content": "e poi?"}
+    # session grew with the new exchange
+    s = session.load_session()
+    assert s["messages"][-1] == {"role": "assistant", "content": "more"}
+
+
+def test_resume_interactive_preloads_history(monkeypatch):
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    from aisk import session
+    hist = [{"role": "user", "content": "ciao"}, {"role": "assistant", "content": "hey"}]
+    session.save_session("some/model", hist)
+    called = {}
+
+    def fake_chat(model, cfg, **kw):
+        called["model"] = model
+        called["history"] = kw.get("history")
+        return 0
+
+    with patch("aisk.cli.chat", fake_chat), patch("aisk.cli.sys.stdin") as st:
+        st.isatty.return_value = True
+        assert main(["--resume"]) == 0
+
+    assert called["model"] == "some/model"
+    assert called["history"] == hist
+
+
 def test_multiword_message_without_quotes(capsys, monkeypatch):
     """aisk ge3flash what is the CAP theorem — joins all words after model."""
     monkeypatch.setenv("AISK_API_KEY", "test-key")
     received = {}
 
-    def capture_stream(endpoint, api_key, model, message, **kw):
-        received["message"] = message
+    def capture_stream(endpoint, api_key, model, messages, **kw):
+        received["messages"] = messages
         yield ContentChunk("reply")
 
     with patch("aisk.cli.stream_chat", capture_stream):
         assert main(["ge31lite", "what", "is", "the", "CAP", "theorem"]) == 0
-    assert received["message"] == "what is the CAP theorem"
+    assert received["messages"] == [{"role": "user", "content": "what is the CAP theorem"}]

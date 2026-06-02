@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 from typing import Generator
 
-from aisk import cache
+from aisk import cache, session
 from aisk.client import (
     ContentChunk,
     ErrorInfo,
@@ -151,6 +151,7 @@ def chat(
         had_success = True
         if text:
             messages.append({"role": "assistant", "content": text})
+            session.save_session(model, messages)
 
         if usage:
             _write(f"{_DIM}{_format_usage(usage, totals)}{_RESET}\n")
