@@ -110,10 +110,20 @@ def test_quiet_flag(capsys, monkeypatch):
     assert "ANSWER" not in out
 
 
-def test_model_no_message_tty(capsys):
-    with patch("aisk.cli.sys.stdin") as mock_stdin:
+def test_model_no_message_tty_enters_chat(monkeypatch):
+    """No message on a TTY → interactive chat."""
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    called = {}
+
+    def fake_chat(model, cfg):
+        called["model"] = model
+        return 0
+
+    with patch("aisk.cli.sys.stdin") as mock_stdin, \
+         patch("aisk.cli.chat", fake_chat):
         mock_stdin.isatty.return_value = True
-        assert main(["ge31lite"]) == 2
+        assert main(["ge31lite"]) == 0
+    assert called["model"] == "google/gemini-3.1-flash-lite-preview"
 
 
 def test_model_stdin_message(capsys, monkeypatch):

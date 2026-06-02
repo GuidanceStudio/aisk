@@ -3,6 +3,7 @@ import sys
 
 from aisk import __version__
 from aisk.aliases import resolve_model
+from aisk.chat import chat
 from aisk.client import stream_chat
 from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
@@ -96,14 +97,16 @@ def main(argv: list[str] | None = None) -> int:
     model_input = command
     message: str | None = " ".join(positional[1:]) if len(positional) > 1 else None
 
+    # No message: interactive chat on a TTY, otherwise read from stdin.
+    interactive_chat = False
     if not message:
         if sys.stdin.isatty():
-            print("Error: no message provided. Pass it as an argument or pipe via stdin.", file=sys.stderr)
-            return 2
-        message = sys.stdin.read().strip()
-        if not message:
-            print("Error: empty stdin.", file=sys.stderr)
-            return 2
+            interactive_chat = True
+        else:
+            message = sys.stdin.read().strip()
+            if not message:
+                print("Error: empty stdin.", file=sys.stderr)
+                return 2
 
     try:
         cfg = ensure_config()
@@ -112,6 +115,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     model = resolve_model(model_input, cfg.aliases)
+
+    if interactive_chat:
+        return chat(model, cfg)
+
     events = stream_chat(cfg.endpoint, cfg.api_key, model, message)
 
     if parsed.quiet and parsed.no_stream:

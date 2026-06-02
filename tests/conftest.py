@@ -13,3 +13,4 @@ def isolate_user_config(tmp_path, monkeypatch):
     monkeypatch.setattr("aisk.config.CONFIG_FILE", tmp_path / "conf.toml")
     monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
     monkeypatch.delenv("AISK_API_KEY", raising=False)
+    monkeypatch.delenv("AISK_ENDPOINT", raising=False)

@@ -134,6 +134,13 @@ def load_config() -> Config:
         if shortcuts:
             cfg.shortcuts.update(shortcuts)
 
+    # An explicit endpoint in the environment (or ~/.aisk/.env, loaded above)
+    # wins over conf.toml — lets you point aisk at any OpenAI-compatible
+    # endpoint without editing files.
+    env_endpoint = os.environ.get("AISK_ENDPOINT")
+    if env_endpoint:
+        cfg.endpoint = env_endpoint
+
     cfg.api_key = os.environ.get("AISK_API_KEY", "")
     return cfg
 
@@ -173,7 +180,9 @@ def init_config() -> list[str]:
     if CONFIG_FILE.exists():
         actions.append(f"Skipped {CONFIG_FILE} (already exists)")
     else:
-        CONFIG_FILE.write_text(DEFAULT_CONF_TOML)
+        # Honor AISK_ENDPOINT when set (e.g. `curl ... | AISK_ENDPOINT=... bash`)
+        # so a custom endpoint is persisted into the generated conf.toml.
+        _write_conf(os.environ.get("AISK_ENDPOINT", DEFAULT_ENDPOINT))
         actions.append(f"Created {CONFIG_FILE}")
 
     if ENV_FILE.exists():
@@ -256,6 +265,7 @@ def interactive_init(
 
     # --- conf.toml ---
     print_fn(f"\n  {_C}{_BD}Endpoint{_R}")
+    print_fn(f"  {_D}OpenRouter by default — any OpenAI-compatible endpoint works{_R}")
 
     if CONFIG_FILE.exists():
         if auto:

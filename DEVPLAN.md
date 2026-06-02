@@ -715,3 +715,41 @@ Spostamento del repo su `git@github.com:GuidanceStudio/aisk.git`. I riferimenti 
 - [x] README: one-liner `curl` (raw.githubusercontent), `uv tool install git+https://...`, `git clone https://...` → owner `GuidanceStudio`
 - [x] Remote `origin` locale → `git@github.com:GuidanceStudio/aisk.git`
 - [x] Push su `GuidanceStudio/aisk` (richiede che il repo esista lato GitHub)
+
+## M26: Endpoint generico — qualunque provider OpenAI-compatible ✅
+
+Rendere aisk usabile con qualunque endpoint OpenAI-compatible mantenendo **un solo setting generico** (endpoint + key), con OpenRouter come semplice valore di default. Nessun profilo provider nominato.
+
+Stato attuale: già single endpoint (`[api] endpoint`) + single key (`AISK_API_KEY`); il delta è l'override comodo (env + install non interattivo) e la documentazione.
+
+### Design
+
+- Risoluzione endpoint: `AISK_ENDPOINT` (env, anche da `~/.aisk/.env`) > `conf.toml [api] endpoint` > default OpenRouter.
+- La key resta `AISK_API_KEY` (generica, nessun nome provider).
+- Override in fase di install: `curl ... | AISK_ENDPOINT=... bash` → l'endpoint viene scritto nel `conf.toml` generato dall'`init` non interattivo.
+
+### Task
+
+- [x] `load_config`: applicare l'override `AISK_ENDPOINT` con precedenza env > conf.toml > default.
+- [x] `init_config` (path non interattivo di `aisk init`, usato da `install.sh`): se `AISK_ENDPOINT` è settato, scriverlo nel `conf.toml` generato (via `_write_conf`); altrimenti default.
+- [x] Wizard interattivo: copy provider-neutral ("API endpoint — OpenRouter by default"); verificare default mostrato + Enter = default (già così, solo wording).
+- [x] README: nuova sezione "Use any OpenAI-compatible provider" con esempi (OpenAI diretto, Groq, server locale), nota sugli alias di default in formato slug OpenRouter (`vendor/model`) e uso del pass-through / alias custom su endpoint diretti; documentare `AISK_ENDPOINT` e l'override at-install.
+- [x] Test: precedenza env > toml > default; `init_config` scrive `AISK_ENDPOINT` quando presente.
+
+## M27: Chat interattiva ✅
+
+`aisk <model>` senza messaggio e su terminale (TTY) → REPL che mantiene lo storico e lo rimanda al modello a ogni turno. `aisk <model> "msg"` e la pipe restano one-shot.
+
+### Design
+
+- Uscita: **solo Ctrl-C** (KeyboardInterrupt), esplicitata nel banner iniziale. Nessun comando `/exit` o `/reset`. Ctrl-D / EOF gestito come uscita pulita standard (non pubblicizzato).
+- Storico: in-memory per sessione (nessuna persistenza su disco).
+
+### Task
+
+- [x] `client.stream_chat`: generalizzare da `message: str` a `messages: list[dict]`; mantenere un wrapper/compat per il one-shot (costruisce `[{"role": "user", "content": msg}]`).
+- [x] `cli.main`: se c'è il modello, nessun messaggio, e `sys.stdin.isatty()` → entrare nel chat loop (invece dell'errore attuale "no message"). Pipe/stdin e `aisk model "msg"` invariati.
+- [x] Nuovo `chat()` (modulo `chat.py` o in `output.py`): banner con modello + "Ctrl-C to exit"; loop: prompt utente → append `{"role": "user", ...}` → stream risposta (renderer leggero, senza header per turno) → append `{"role": "assistant", content}` → ripeti.
+- [x] Errore a metà conversazione (`ErrorInfo`): stamparlo, NON appendere il turno assistant fallito, restare nel loop.
+- [x] Usage per turno: footer compatto/dim (tokens, cost se presente), riusando la logica esistente.
+- [x] Test: più turni con `input` mockato → lo storico cresce e viene passato a `stream_chat`; gestione KeyboardInterrupt/EOF; errore mid-chat non rompe il loop.

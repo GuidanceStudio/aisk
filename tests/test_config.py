@@ -84,6 +84,32 @@ def test_load_config_env_override(tmp_path, monkeypatch):
     assert cfg.api_key == "env-key"
 
 
+def test_endpoint_env_override_default(monkeypatch):
+    """AISK_ENDPOINT overrides the built-in default."""
+    monkeypatch.setenv("AISK_ENDPOINT", "https://custom.example/v1/chat/completions")
+    cfg = load_config()
+    assert cfg.endpoint == "https://custom.example/v1/chat/completions"
+
+
+def test_endpoint_env_overrides_conf(tmp_path, monkeypatch):
+    """AISK_ENDPOINT wins over conf.toml [api] endpoint."""
+    conf = tmp_path / "conf.toml"
+    conf.write_text('[api]\nendpoint = "http://from-toml/v1"\n')
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
+    monkeypatch.setenv("AISK_ENDPOINT", "http://from-env/v1")
+
+    cfg = load_config()
+    assert cfg.endpoint == "http://from-env/v1"
+
+
+def test_init_config_honors_endpoint_env(tmp_path, monkeypatch):
+    """`aisk init` (non-interactive) persists AISK_ENDPOINT into conf.toml."""
+    monkeypatch.setenv("AISK_ENDPOINT", "http://install-time/v1")
+    init_config()
+    parsed = tomllib.loads((tmp_path / "conf.toml").read_text())
+    assert parsed["api"]["endpoint"] == "http://install-time/v1"
+
+
 def test_init_config_creates_files(tmp_path, monkeypatch):
     monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("aisk.config.CONFIG_FILE", tmp_path / "conf.toml")
