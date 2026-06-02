@@ -34,6 +34,39 @@ class ErrorInfo:
 Event = ContentChunk | ReasoningChunk | UsageInfo | ErrorInfo
 
 
+def _models_url(endpoint: str) -> str | None:
+    """Derive the OpenAI-compatible /models URL from a chat-completions endpoint."""
+    suffix = "/chat/completions"
+    if endpoint.endswith(suffix):
+        return endpoint[: -len(suffix)] + "/models"
+    return None
+
+
+def list_models(endpoint: str, api_key: str, *, timeout: float = 10.0) -> set[str] | None:
+    """Best-effort fetch of the available model IDs from an endpoint's /models.
+
+    Returns the set of IDs, or None if it cannot be determined (non-standard
+    endpoint, network error, unexpected payload). Never raises.
+    """
+    url = _models_url(endpoint)
+    if url is None:
+        return None
+    try:
+        resp = httpx.get(
+            url, headers={"Authorization": f"Bearer {api_key}"}, timeout=timeout
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    items = data.get("data") if isinstance(data, dict) else data
+    if not isinstance(items, list):
+        return None
+    ids = {m["id"] for m in items if isinstance(m, dict) and m.get("id")}
+    return ids or None
+
+
 def stream_chat(
     endpoint: str,
     api_key: str,

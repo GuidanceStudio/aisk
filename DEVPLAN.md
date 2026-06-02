@@ -837,3 +837,79 @@ Due problemi emersi usando la chat:
 - [x] Banner: descrivere il nuovo comportamento di Ctrl-C.
 - [x] Test: KeyboardInterrupt durante un turno → loop prosegue, storico rollback; KeyboardInterrupt al prompt → esce; costo cumulativo somma correttamente su più turni.
 - [x] README: aggiornare la nota sulla chat (Ctrl-C interrompe la risposta / esce al prompt; costi per-turno e cumulativi).
+
+## M31: Chat — validazione modello immediata (fail-fast) ✅
+
+Problema: entrando in chat con un modello inesistente/typo (`dsv4` invece di `dsv4f`), l'errore arriva solo dopo aver scritto il primo messaggio (`Error: dsv4 is not a valid model ID`). Il pass-through è voluto (qualunque model ID accettato dall'endpoint), quindi localmente non si distingue valido da typo — ma l'endpoint sì.
+
+### Design (combinato)
+
+0. **Skip se è un alias ("shortener"):** se `model_input` è una chiave in `cfg.aliases`, è un modello curato → nessuna chiamata a `/models`, si entra dritti in chat. Il preflight scatta **solo** per i pass-through (ID grezzi digitati), dove nascono i typo (`dsv4`).
+1. **Preflight in chat (best-effort) con cache:** per i pass-through, controllare la lista modelli dell'endpoint: `GET {endpoint senza /chat/completions}/models` (standard OpenAI-compatible; OpenRouter, OpenAI, Groq, server locali; degrada in silenzio dove `/models` non esiste).
+   - **Cache** in `~/.aisk/models-cache.json`, per endpoint, con TTL 24h.
+   - **Hit positivo** (modello presente nella lista in cache fresca) → valido, zero chiamate.
+   - **Negativo/cache miss/scaduta** → fetch live, aggiorna cache, poi decidi. (La cache non è mai autorevole sul "no": un modello appena aggiunto non sarebbe nella lista vecchia.)
+   - Se la fetch live fallisce/non parsabile → procedere in silenzio (non bloccare).
+   - Modello non in lista (confermato live) → errore + suggerimenti, uscita rc 1 *prima* del prompt.
+2. **Fail-fast:** se il primo turno va in errore prima di qualunque scambio riuscito, uscire dalla chat con quell'errore invece di restare nel loop a sbagliare ogni volta.
+3. **Suggerimenti typo:** via `difflib.get_close_matches` sulle chiavi alias (sull'input digitato) e, in fallback, sugli ID modello disponibili. Es. `dsv4` → "Did you mean: dsv4f, dsv4p?".
+
+One-shot invariato: l'errore è già immediato (una sola richiesta).
+
+### Task
+
+- [x] `client.py`: `list_models(endpoint, api_key)` best-effort → `set[str] | None`; helper `_models_url(endpoint)` (deriva da `…/chat/completions` → `…/models`).
+- [x] `config.py` (o nuovo `cache.py`): cache modelli per-endpoint in `~/.aisk/models-cache.json` con TTL 24h; helper get/set; `is_model_valid(endpoint, key, model)` → True/False/None con la logica hit-positivo / refetch-su-negativo.
+- [x] `chat.py`: skip preflight se alias; altrimenti validazione via cache+live; messaggio d'errore con suggerimenti; uscita rc 1 se non valido.
+- [x] `chat.py`: fail-fast sul primo turno in errore (nessuno scambio riuscito) → uscita.
+- [x] `cli.py`: passare anche il `model_input` originale e la mappa alias a `chat()` (per skip-alias e suggerimenti).
+- [x] Test: alias → nessuna chiamata a `/models`; pass-through in lista → ok; non in lista → rc 1 + suggerimenti; cache negativa → refetch live; `list_models` None → si procede; primo turno in errore → esce; TTL cache.
+- [x] README: nota sulla validazione del modello in chat + cache.
+
+
+**Note esecuzione (TDD):** preflight saltato anche quando `model_input` è `None` (es. resume: già validato). Il fail-fast sul primo turno in errore sostituisce il vecchio "rollback e continua" SOLO finché non c'è stato uno scambio riuscito; dopo un successo, un errore fa rollback e prosegue. Cache modelli in `~/.aisk/models-cache.json` (chmod 600).
+## M32: `--resume` — continua l'ultima conversazione
+
+Richiesta: dopo `aisk dsv4f "ciao"` (one-shot), poter continuare quella conversazione con `aisk --resume`, senza che si faccia casino con altre sessioni aisk aperte in parallelo.
+
+### Design
+
+- **Persistenza per-terminale (anti-conflitto):** la conversazione viene salvata in `~/.aisk/sessions/<key>.json`, dove `key` deriva dal PID della shell padre (`os.getppid()`), stabile entro lo stesso terminale. Terminali diversi → file diversi → nessun clobber tra sessioni parallele. Contenuto: `{model, messages, updated_at}`. `chmod 600`; pruning dei file > 7 giorni a ogni scrittura.
+- **Salvataggio:** dopo ogni scambio riuscito — one-shot (tramite un "tee" sul generatore di eventi che accumula i `ContentChunk`, senza toccare i renderer) e ogni turno di chat.
+- **`aisk --resume` (senza messaggio):** carica la sessione del terminale corrente; se assente, la più recente in assoluto (fallback). Se non c'è nulla → errore "nothing to resume". Entra in **chat** precaricata con `messages`, modello dalla sessione. Stampa un recap breve (modello + n. messaggi).
+- **`aisk --resume "msg"`:** continuazione one-shot: appende `msg`, risponde, ripersiste. Rispetta `-q`/`-S`.
+- `--resume` non prende il modello come positional: gli eventuali positional sono il messaggio.
+
+### Task
+
+- [ ] Nuovo `session.py` (o in `config.py`): `session_path()` (key da `getppid()`), `save_session(model, messages)`, `load_session()` (corrente → fallback più recente), pruning > 7gg, `chmod 600`.
+- [ ] `cli.py`: flag `--resume`; ramo dedicato che carica la sessione, instrada a chat (no msg) o one-shot (con msg); errore se niente da riprendere.
+- [ ] `cli.py`/one-shot: "tee" sugli eventi per catturare il testo assistant e persistere `{user, assistant}` dopo una risposta riuscita.
+- [ ] `chat.py`: `chat()` accetta `history` precaricato e persiste dopo ogni turno riuscito; integra il recap iniziale.
+- [ ] Test: save/load round-trip; scoping per-PID (key diversa → file diverso); fallback al più recente; `--resume` senza sessione → errore; continuazione one-shot appende e ripersiste; pruning TTL.
+- [ ] README: documentare `--resume` (e il comportamento per-terminale).
+
+## M33: Prompt caching sempre attivo (default)
+
+Ridurre i costi quando si rimanda lo storico (chat/resume) e su prompt lunghi. Caching attivo di default, senza intervento dell'utente.
+
+### Realtà per provider
+
+- OpenAI, DeepSeek, Grok, ecc.: caching **automatico** lato provider → nessuna azione.
+- Anthropic (Claude) e Gemini: serve un breakpoint esplicito `cache_control: {"type": "ephemeral"}` sui blocchi messaggio; OpenRouter lo inoltra al provider.
+
+Quindi "sempre attivo" = automatico dove supportato + breakpoint espliciti dove servono.
+
+### Design
+
+- Default **ON**. Escape hatch via env `AISK_PROMPT_CACHE` (`0`/`false`/`no` → off). Nessun campo nuovo nel conf.toml (niente churn su renderer/drift).
+- In `stream_chat`: se `prompt_cache` è on **e** l'endpoint è OpenRouter **e** il modello è Anthropic/Gemini → marca l'**ultimo** messaggio con `cache_control` (content convertito in block-form). Altri endpoint/modelli → invariato (auto-cache, e non si rischia un 400 su endpoint generici stretti).
+- Breakpoint sull'ultimo messaggio → cacha l'intero prefisso → il turno successivo (chat/resume) è cache-hit (prefisso rolling).
+
+### Task
+
+- [ ] `config.py`: `Config.prompt_cache: bool = True`; `load_config` lo deriva da `AISK_PROMPT_CACHE` (default True).
+- [ ] `client.py`: `_supports_explicit_cache(model)` (claude/anthropic/gemini/google) + `_apply_prompt_cache(messages, model, endpoint)` (gating su `openrouter.ai` nell'endpoint, marca l'ultimo blocco); `stream_chat(..., prompt_cache=True)` applica la trasformazione dopo la normalizzazione dei messaggi.
+- [ ] `cli.py`/`chat.py`: passare `cfg.prompt_cache` a `stream_chat` (one-shot e chat).
+- [ ] Test: anthropic+openrouter → ultimo messaggio in block-form con `cache_control`; openai+openrouter → invariato; endpoint non-openrouter → invariato; `prompt_cache=False` → invariato; idempotenza/struttura blocchi.
+- [ ] README: nota su prompt caching attivo di default (+ `AISK_PROMPT_CACHE=0` per disattivarlo).

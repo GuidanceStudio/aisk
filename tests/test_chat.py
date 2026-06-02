@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
-from aisk.chat import _render_turn, chat
+from aisk.chat import _render_turn, _suggest, chat
 from aisk.client import ContentChunk, ErrorInfo, UsageInfo
-from aisk.config import Config
+from aisk.config import DEFAULT_ALIASES, Config
 
 
 def _events(*evs):
@@ -61,23 +61,85 @@ def test_chat_resends_growing_history():
     ]
 
 
-def test_chat_rolls_back_failed_turn():
+def test_chat_failfast_on_first_error():
+    """A first turn that errors (e.g. invalid model) exits instead of looping."""
+    cfg = Config(api_key="k")
+
+    def err_stream(endpoint, api_key, model, messages, **kw):
+        yield ErrorInfo(message="bad model")
+
+    with patch("aisk.chat.stream_chat", err_stream), \
+         patch("builtins.input", _inputs("hi", "again")):
+        assert chat("m", cfg) == 1
+
+
+def test_chat_rolls_back_error_after_success():
+    """An error AFTER a successful turn rolls back and keeps the chat alive."""
     cfg = Config(api_key="k")
     captured = []
 
     def fake_stream(endpoint, api_key, model, messages, **kw):
         captured.append([m.copy() for m in messages])
-        if len(captured) == 1:
-            yield ErrorInfo(message="boom")
+        n = len(captured)
+        if n == 2:
+            yield ErrorInfo(message="blip")
         else:
-            yield ContentChunk("ok")
+            yield ContentChunk(f"ok{n}")
 
     with patch("aisk.chat.stream_chat", fake_stream), \
-         patch("builtins.input", _inputs("bad", "good")):
+         patch("builtins.input", _inputs("a", "b", "c")):
         chat("m", cfg)
 
-    # The failed 'bad' turn was rolled back, so the second call only sees 'good'.
-    assert captured[1] == [{"role": "user", "content": "good"}]
+    # turn1 ok, turn2 errored (rolled back), turn3 sees a / ok1 / c
+    assert captured[2] == [
+        {"role": "user", "content": "a"},
+        {"role": "assistant", "content": "ok1"},
+        {"role": "user", "content": "c"},
+    ]
+
+
+# --- M31: preflight model validation ---
+
+
+def test_chat_skips_preflight_for_alias():
+    cfg = Config(api_key="k")  # "dsv4f" is a default alias
+    with patch("aisk.chat.cache.check_model") as chk, \
+         patch("builtins.input", _inputs()):
+        chat("deepseek/deepseek-v4-flash", cfg, model_input="dsv4f")
+    chk.assert_not_called()
+
+
+def test_chat_no_model_input_skips_preflight():
+    cfg = Config(api_key="k")
+    with patch("aisk.chat.cache.check_model") as chk, \
+         patch("builtins.input", _inputs()):
+        chat("m", cfg)
+    chk.assert_not_called()
+
+
+def test_chat_invalid_model_aborts_with_suggestions(capsys):
+    cfg = Config(api_key="k")
+    with patch("aisk.chat.cache.check_model",
+               return_value=(False, {"deepseek/deepseek-v4-flash"})), \
+         patch("builtins.input") as inp:
+        rc = chat("dsv4", cfg, model_input="dsv4")
+    assert rc == 1
+    inp.assert_not_called()  # never reached the prompt
+    out = capsys.readouterr().out
+    assert "not a valid model" in out
+    assert "dsv4f" in out  # suggested the close alias
+
+
+def test_chat_unverifiable_model_proceeds():
+    cfg = Config(api_key="k")
+    with patch("aisk.chat.cache.check_model", return_value=(None, None)), \
+         patch("builtins.input", _inputs()):
+        assert chat("whatever/model", cfg, model_input="whatever/model") == 0
+
+
+def test_suggest_close_alias():
+    s = _suggest("dsv4", DEFAULT_ALIASES, None)
+    assert "dsv4f" in s and "dsv4p" in s
 
 
 def test_chat_blank_input_skipped():

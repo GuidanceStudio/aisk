@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import difflib
 from typing import Generator
 
+from aisk import cache
 from aisk.client import (
     ContentChunk,
     ErrorInfo,
@@ -22,6 +24,14 @@ from aisk.output import (
 )
 
 _BAR = "─" * 60
+
+
+def _suggest(typed: str, aliases: dict[str, str], available: set[str] | None) -> list[str]:
+    """Close-match suggestions for a mistyped model: aliases first, then IDs."""
+    matches = difflib.get_close_matches(typed, list(aliases), n=3, cutoff=0.6)
+    if not matches and available:
+        matches = difflib.get_close_matches(typed, sorted(available), n=3, cutoff=0.5)
+    return matches
 
 
 def _render_turn(
@@ -59,20 +69,53 @@ def _render_turn(
     return "".join(content_parts), ok, usage
 
 
-def chat(model: str, cfg: Config) -> int:
+def _validate_model(model: str, cfg: Config, model_input: str | None) -> int | None:
+    """Preflight: confirm the model is valid before the prompt.
+
+    Skipped for curated aliases and when the original input is unknown. Returns
+    an exit code (1) if the model is confirmed invalid, else None (proceed).
+    """
+    if model_input is None or model_input in cfg.aliases:
+        return None
+
+    verdict, available = cache.check_model(cfg.endpoint, cfg.api_key, model)
+    if verdict is not False:
+        return None
+
+    _write(f"\n{_RED}Error: '{model_input}' is not a valid model for this endpoint.{_RESET}\n")
+    suggestions = _suggest(model_input, cfg.aliases, available)
+    if suggestions:
+        _write(f"{_DIM}Did you mean: {', '.join(suggestions)}?  (or run `aisk models`){_RESET}\n")
+    else:
+        _write(f"{_DIM}Run `aisk models`, or pass a full model ID.{_RESET}\n")
+    return 1
+
+
+def chat(
+    model: str,
+    cfg: Config,
+    *,
+    model_input: str | None = None,
+    history: list[dict] | None = None,
+) -> int:
     """Run an interactive multi-turn chat REPL. Returns an exit code.
 
     History is kept in memory and resent each turn, so the model sees the whole
     conversation. Ctrl-C stops the current reply (or exits at the prompt);
     Ctrl-D exits.
     """
+    rc = _validate_model(model, cfg, model_input)
+    if rc is not None:
+        return rc
+
     _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
     _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
     _write(f"  {_DIM}Ctrl-C: stop the reply (or exit at the prompt) · Ctrl-D: exit{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
-    messages: list[dict] = []
+    messages: list[dict] = list(history) if history else []
     totals = {"cost": 0.0, "in": 0, "out": 0, "any_cost": False}
+    had_success = False
 
     while True:
         try:
@@ -100,7 +143,12 @@ def chat(model: str, cfg: Config) -> int:
         if not ok:
             # Roll back the failed turn so history stays consistent.
             messages.pop()
+            # If nothing has worked yet, the setup is broken — fail fast.
+            if not had_success:
+                return 1
             continue
+
+        had_success = True
         if text:
             messages.append({"role": "assistant", "content": text})
 

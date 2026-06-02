@@ -115,7 +115,7 @@ def test_model_no_message_tty_enters_chat(monkeypatch):
     monkeypatch.setenv("AISK_API_KEY", "test-key")
     called = {}
 
-    def fake_chat(model, cfg):
+    def fake_chat(model, cfg, **kw):
         called["model"] = model
         return 0
 
