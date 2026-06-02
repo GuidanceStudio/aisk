@@ -133,6 +133,7 @@ aisk ge31lite "what is the CAP theorem?"
 # Interactive chat — no message starts a multi-turn REPL.
 # Ctrl-C stops the current reply (or exits at the prompt); Ctrl-D exits.
 # Each reply shows its cost and the running conversation total.
+# A mistyped model is caught up front (e.g. `aisk dsv4` → "did you mean dsv4f?").
 aisk cls46
 
 # No quotes needed — all words after the model are joined automatically

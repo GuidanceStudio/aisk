@@ -131,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     model = resolve_model(model_input, cfg.aliases)
 
     if interactive_chat:
-        return chat(model, cfg)
+        return chat(model, cfg, model_input=model_input)
 
     events = stream_chat(cfg.endpoint, cfg.api_key, model, message)
 
