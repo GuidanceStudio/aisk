@@ -13,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aisk",
         description="Ask any LLM from your terminal.",
-        usage="%(prog)s [-q] <model> <message>\n       %(prog)s init\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s --version",
+        usage="%(prog)s [-q] [-S] <model> <message>\n       %(prog)s init\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s completions <bash|zsh|install|refresh>\n       %(prog)s --version",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"

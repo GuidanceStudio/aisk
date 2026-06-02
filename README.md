@@ -29,10 +29,10 @@ Or manually:
 
 ```bash
 # From GitHub
-uv tool install git+ssh://git@github.com/Ymx1ZQ/aisk.git
+uv tool install git+https://github.com/Ymx1ZQ/aisk.git
 
 # From local clone
-git clone git@github.com:Ymx1ZQ/aisk.git
+git clone https://github.com/Ymx1ZQ/aisk.git
 cd aisk
 uv tool install .
 ```
@@ -151,10 +151,10 @@ Define short shell functions that call `aisk` with a specific model. Configure t
 ```toml
 [shortcuts]
 ds = "dsv4f"
-sps = "sps"
+news = "sps"
 # gpt = "gpt55"
 # cl = "cls46"
-# ge = "ge25flash"
+# ge = "ge35flash"
 ```
 
 Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsv4f "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
@@ -165,7 +165,7 @@ aisk shortcuts
 
 # Use directly
 ds what is the CAP theorem
-sps latest news on Rust 2026
+news latest developments on Rust 2026
 ```
 
 ## Shell Completions
