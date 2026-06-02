@@ -6,7 +6,7 @@ from aisk.aliases import resolve_model
 from aisk.chat import chat
 from aisk.client import stream_chat
 from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
-from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config
+from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config, sync_aliases
 from aisk.output import render_quiet, render_quiet_buffered, render_verbose, render_verbose_buffered
 
 
@@ -14,7 +14,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aisk",
         description="Ask any LLM from your terminal.",
-        usage="%(prog)s [-q] [-S] <model> <message>\n       %(prog)s init\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s completions <bash|zsh|install|refresh>\n       %(prog)s --version",
+        usage="%(prog)s [-q] [-S] <model> <message>\n       %(prog)s init\n       %(prog)s sync\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s completions <bash|zsh|install|refresh>\n       %(prog)s --version",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
@@ -49,6 +49,20 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for action in init_config():
                 print(action)
+        return 0
+
+    if command == "sync":
+        summary = sync_aliases()
+
+        def _fmt(items: list[str]) -> str:
+            return ", ".join(items) if items else "(none)"
+
+        print("Synced ~/.aisk/conf.toml aliases to current defaults.")
+        print(f"  + added:   {_fmt(summary['added'])}")
+        print(f"  ~ updated: {_fmt(summary['updated'])}")
+        print(f"  - removed: {_fmt(summary['removed'])}")
+        print(f"  = kept custom: {_fmt(summary['kept'])}")
+        print('\nRefresh tab-completion:  eval "$(aisk completions refresh)"')
         return 0
 
     if command == "completions":

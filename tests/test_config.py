@@ -16,6 +16,7 @@ from aisk.config import (
     DEFAULT_SHORTCUTS,
     load_config,
     init_config,
+    sync_aliases,
 )
 
 
@@ -137,6 +138,53 @@ def test_init_config_skips_existing(tmp_path, monkeypatch):
     actions = init_config()
     assert all("Skipped" in a for a in actions)
     assert (tmp_path / "conf.toml").read_text() == "existing"
+
+
+def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
+    """sync drops retired defaults, refreshes current ones, keeps custom + [api]/[shortcuts]."""
+    conf = tmp_path / "conf.toml"
+    conf.write_text(
+        '[api]\nendpoint = "http://my-host/v1"\n\n'
+        "[aliases]\n"
+        'clo47 = "anthropic/claude-opus-4.7"\n'   # retired → dropped
+        'gpt5mini = "openai/gpt-5-mini"\n'         # retired → dropped
+        'o4m = "openai/o4-mini"\n'                 # retired → dropped
+        'cls46 = "anthropic/claude-sonnet-4.6"\n'  # current default → kept (as default)
+        'myx = "vendor/private-model"\n'           # genuine custom → kept
+        "\n[shortcuts]\n"
+        'q = "qwen37"\n'
+    )
+
+    summary = sync_aliases()
+
+    import tomllib as _t
+    parsed = _t.loads(conf.read_text())
+    aliases = parsed["aliases"]
+
+    # Retired ex-defaults are gone
+    for gone in ("clo47", "gpt5mini", "o4m"):
+        assert gone not in aliases
+    # Current defaults present (including the new ones)
+    assert aliases["clo48"] == "anthropic/claude-opus-4.8"
+    assert aliases["gpt54mini"] == "openai/gpt-5.4-mini"
+    # Genuine custom preserved
+    assert aliases["myx"] == "vendor/private-model"
+    # The non-custom part equals the current defaults exactly
+    assert {k: v for k, v in aliases.items() if k != "myx"} == DEFAULT_ALIASES
+    # [api] and [shortcuts] untouched
+    assert parsed["api"]["endpoint"] == "http://my-host/v1"
+    assert parsed["shortcuts"] == {"q": "qwen37"}
+
+    assert "clo47" in summary["removed"]
+    assert "myx" in summary["kept"]
+    assert "clo48" in summary["added"]
+
+
+def test_sync_aliases_creates_when_missing(tmp_path):
+    """sync with no conf.toml behaves like init."""
+    summary = sync_aliases()
+    assert (tmp_path / "conf.toml").exists()
+    assert set(summary["added"]) == set(DEFAULT_ALIASES)
 
 
 def test_load_config_with_shortcuts(tmp_path, monkeypatch):

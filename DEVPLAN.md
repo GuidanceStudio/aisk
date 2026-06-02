@@ -753,3 +753,64 @@ Stato attuale: già single endpoint (`[api] endpoint`) + single key (`AISK_API_K
 - [x] Errore a metà conversazione (`ErrorInfo`): stamparlo, NON appendere il turno assistant fallito, restare nel loop.
 - [x] Usage per turno: footer compatto/dim (tokens, cost se presente), riusando la logica esistente.
 - [x] Test: più turni con `input` mockato → lo storico cresce e viene passato a `stream_chat`; gestione KeyboardInterrupt/EOF; errore mid-chat non rompe il loop.
+
+## M28: Pulizia default — solo ultima generazione per slot ✅
+
+Richiesta: togliere dai modelli suggeriti (default aliases) i modelli vecchi quando esiste l'equivalente di nuova generazione. Analisi: dopo M24 la lista è già quasi tutta corrente; gli unici "vecchia generazione con equivalente nuovo" sono lato OpenAI.
+
+### Sostituzioni (uccidi vecchio, tieni nuovo)
+
+| Vecchio alias | Vecchio modello | Nuovo alias | Nuovo modello | I/O $/M |
+|---|---|---|---|---|
+| `gpt5mini` | `openai/gpt-5-mini` | `gpt54mini` | `openai/gpt-5.4-mini` | 0.75 / 4.50 |
+| `gpt5nano` | `openai/gpt-5-nano` | `gpt54nano` | `openai/gpt-5.4-nano` | 0.20 / 1.25 |
+
+I "piccoli" correnti OpenAI sono GPT-5.4 mini/nano (mar 2026); non esiste gpt-5.5-mini/nano.
+
+### Rimozioni
+
+| Alias | Modello | Motivo |
+|---|---|---|
+| `o4m` | `openai/o4-mini` | serie-o (o1/o3/o4-mini) ritirata feb 2026; slot reasoning/economico coperto da GPT-5.4 mini/nano e GPT-5.5 |
+
+### Tenuti volutamente (NON sono vecchi-equivalenti: slot di prezzo distinti)
+
+- `ge25lite` (`gemini-2.5-flash-lite`, $0.10/$0.40) vs `ge31lite` (`gemini-3.1-flash-lite`, $0.25/$1.50): il 2.5 è 2.5–4× più economico → resta come tier ultra-cheap. `ge35flash` ($1.50/$9) è lo slot "flash" pieno. Tre fasce di prezzo distinte.
+- `ge31pro` (`gemini-3.1-pro-preview`): Gemini 3.5 Pro non è ancora su OpenRouter.
+- Anthropic (clo48/cls46/clh45), DeepSeek (dsv4f/dsv4p), Qwen (qwen37), Perplexity (s/sps): già ultima gen.
+- `m27`, `glm51`, `kimi26`, `mistral`, `l4scout`, `l4mav`: correnti al check di M24 (non rivisti qui).
+
+### Task
+
+- [x] `_ALIAS_GROUPS` in `config.py`: `gpt5mini`→`gpt54mini`, `gpt5nano`→`gpt54nano`, rimuovere `o4m`
+- [x] Test in `tests/test_aliases.py`: nuovi alias risolvono; `gpt5mini`/`gpt5nano`/`o4m` passano in pass-through (removed)
+- [x] `grep` README/docs per `gpt5mini`/`gpt5nano`/`o4m` ed eventuali esempi
+- [x] Drift test resta verde
+
+## M29: `aisk sync` — riallinea gli alias del conf.toml ai default ✅
+
+Problema emerso: i cambi ai default *del codice* (M24/M28) non toccano il `~/.aisk/conf.toml` già presente nella home. `load_config` fonde `DEFAULT_ALIASES` con gli alias del conf.toml utente (`update`), quindi l'utente continua a vedere i vecchi alias (in `aisk models` e nell'autocomplete) finché non rigenera il file. `aisk init` salta se il file esiste; l'overwrite del wizard resetta anche endpoint/shortcuts.
+
+### Design
+
+Nuovo comando `aisk sync` che riscrive **solo** gli alias del `conf.toml` ai default correnti, preservando `[api]` (endpoint), `[shortcuts]` e gli alias realmente custom.
+
+Per distinguere "ex-default da rimuovere" da "custom da tenere" serve la storia degli alias ritirati:
+- `RETIRED_ALIASES: frozenset[str]` in `config.py` = tutte le chiavi alias mai spedite come default e poi rimosse/rinominate. Diventa la sorgente unica usata anche dal test `test_removed_aliases_passthrough` (consolidamento, non nuova manutenzione). Invariante: `RETIRED_ALIASES ∩ DEFAULT_ALIASES = ∅`.
+
+Logica di sync:
+- `managed = set(DEFAULT_ALIASES) | RETIRED_ALIASES`
+- `custom = { k:v del conf utente | k ∉ managed }`  → preservati
+- nuovo `[aliases]` = default correnti + `custom` (sotto un gruppo `# Custom`)
+- gli ex-default (in `RETIRED_ALIASES`) spariscono; i default aggiornano i valori
+- `[api].endpoint` e `[shortcuts]` riletti dal file e riscritti invariati
+
+### Task
+
+- [x] `config.py`: `RETIRED_ALIASES` (M22+M24+M28 + stale pre-M22); generalizzare il renderer in `_render_conf(endpoint, custom_aliases, shortcuts, *, shortcut_examples)` e far derivare `_render_default_conf` da esso (output invariato → drift/init test verdi).
+- [x] `config.py`: `sync_aliases()` → riscrive il conf.toml e ritorna un summary `{added, updated, removed, kept}`. Se il file non esiste, equivale a `init_config`.
+- [x] `cli.py`: comando `aisk sync` → esegue e stampa il summary + suggerisce `eval "$(aisk completions refresh)"`.
+- [x] `completions.py`: aggiungere `sync` ai subcommand completabili (bash + zsh).
+- [x] `cli.py`: aggiornare `usage=` con `sync`.
+- [x] Test: `sync_aliases` su un conf con ex-default + alias custom + endpoint custom + shortcuts → ritirati rimossi, default presenti/aggiornati, custom + endpoint + shortcuts preservati; invariante RETIRED∩DEFAULT vuoto; `test_removed_aliases_passthrough` usa `RETIRED_ALIASES`.
+- [x] README: documentare `aisk sync` (e nota: dopo un upgrade che cambia i modelli, lancia `aisk sync` per riallineare i suggeriti).
