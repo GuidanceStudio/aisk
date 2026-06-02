@@ -927,3 +927,17 @@ Esito della `/code-review` su M31–M33. Gemini+`cache_control` testato live su 
 - [x] D4 — `session.py:save_session`: `chmod 0o700` sulla dir `~/.aisk/sessions/` (i file sono già 0o600; la dir era coi permessi di default). Coerente con la postura `chmod 600` del `.env`.
 - [x] D1 — `client.py:_supports_explicit_cache`: rimuovere la ridondanza dei token (`anthropic`/`claude` e `google`/`gemini` matchano entrambi lo stesso slug) → tenere i nomi-famiglia più precisi: `"claude" in m or "gemini" in m`.
 - [x] Test: dir sessioni a `0o700`; `_supports_explicit_cache` resta verde.
+
+## M35: Chat — cronologia prompt con frecce su/giù ✅
+
+Nella REPL interattiva, poter richiamare i prompt precedenti con ↑/↓ (e tornare giù).
+
+### Design
+
+`input()` di Python abilita automaticamente line-editing e cronologia (frecce su/giù) quando il modulo stdlib `readline` è caricato. Basta importarlo in `chat.py`, con guard per le piattaforme senza readline (es. Windows). Cronologia in-sessione, nessun file nuovo, nessuna dipendenza esterna.
+
+### Task
+
+- [x] `chat.py`: `import readline` con `try/except ImportError`, all'avvio del modulo.
+- [x] Verificare che la suite resti verde (i test mockano `input`, quindi non toccati).
+- [x] README: nota che la chat supporta ↑/↓ per i prompt precedenti.
