@@ -37,6 +37,14 @@ def test_prune_removes_old_on_save():
     assert files == ["NEW"]
 
 
+def test_sessions_dir_is_private():
+    import os
+    import stat
+    session.save_session("m", [{"role": "user", "content": "x"}], key="A", now=1.0)
+    mode = stat.S_IMODE(os.stat(session._sessions_dir()).st_mode)
+    assert mode == 0o700
+
+
 def test_load_skips_corrupted(tmp_path):
     d = session._sessions_dir()
     d.mkdir(parents=True, exist_ok=True)
