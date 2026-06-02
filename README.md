@@ -9,13 +9,14 @@ aisk ge31lite "explain monads in Haskell"
 ## Features
 
 - **Streaming responses** — tokens appear as they arrive
+- **Interactive chat** — `aisk cls46` with no message opens a multi-turn REPL
 - **Reasoning support** — shows thinking tokens for models like o4-mini, DeepSeek-R1
 - **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
 - **Buffered mode** — `-S` prints the full response at the end instead of streaming
 - **Stdin support** — `echo "explain this" | aisk cls46`
-- **OpenAI-compatible** — works with OpenRouter (default), or any OpenAI-compatible endpoint
+- **Any OpenAI-compatible endpoint** — OpenRouter by default, override with one setting
 - **Zero config** — just set your API key and go
 
 ## Install
@@ -78,11 +79,42 @@ cls46 = "anthropic/claude-sonnet-4.6"
 # ... add your own
 ```
 
+### Use any OpenAI-compatible provider
+
+OpenRouter is only the default. Point `aisk` at any OpenAI-compatible
+`/chat/completions` endpoint (OpenAI, Groq, a local llama.cpp/vLLM server, …) by
+overriding a single setting — there are no per-provider profiles.
+
+Two ways to set the endpoint:
+
+```toml
+# 1. Persist it in ~/.aisk/conf.toml
+[api]
+endpoint = "https://api.openai.com/v1/chat/completions"
+```
+
+```bash
+# 2. Override on the fly with AISK_ENDPOINT (wins over conf.toml)
+export AISK_ENDPOINT="https://api.groq.com/openai/v1/chat/completions"
+
+# …including at install time:
+curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh \
+  | AISK_ENDPOINT="https://api.openai.com/v1/chat/completions" bash
+```
+
+`AISK_API_KEY` is the key for whatever endpoint you choose. Note that the default
+aliases use OpenRouter slugs (`anthropic/claude-sonnet-4.6`); on a direct provider
+the model is named natively (e.g. `gpt-5.5`), so use the pass-through form
+(`aisk gpt-5.5 "hi"`) or define your own aliases.
+
 ## Usage
 
 ```bash
 # Ask a question (verbose mode, default)
 aisk ge31lite "what is the CAP theorem?"
+
+# Interactive chat — no message starts a multi-turn REPL (Ctrl-C to exit)
+aisk cls46
 
 # No quotes needed — all words after the model are joined automatically
 aisk ge31lite what is the CAP theorem

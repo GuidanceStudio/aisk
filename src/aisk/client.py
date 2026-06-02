@@ -38,12 +38,15 @@ def stream_chat(
     endpoint: str,
     api_key: str,
     model: str,
-    message: str,
+    messages: str | list[dict],
     *,
     read_timeout: float = 120.0,
     connect_timeout: float = 10.0,
 ) -> Generator[Event, None, None]:
     """Stream a chat completion from an OpenAI-compatible endpoint.
+
+    *messages* may be a single user message string (wrapped automatically) or a
+    full list of ``{"role": ..., "content": ...}`` dicts for multi-turn chat.
 
     Yields typed events as they arrive from the SSE stream.
 
@@ -51,13 +54,16 @@ def stream_chat(
     arrives for the given number of seconds between chunks, so long-running
     streamed responses will never time out as long as the model keeps sending.
     """
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": message}],
+        "messages": messages,
         "stream": True,
         "stream_options": {"include_usage": True},
     }
