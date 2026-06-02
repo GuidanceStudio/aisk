@@ -11,6 +11,7 @@ aisk ge31lite "explain monads in Haskell"
 - **Streaming responses** — tokens appear as they arrive
 - **Interactive chat** — `aisk cls46` with no message opens a multi-turn REPL
 - **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
+- **Prompt caching** — on by default; cuts cost on long chats/resumes (`AISK_PROMPT_CACHE=0` to disable)
 - **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
 - **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`

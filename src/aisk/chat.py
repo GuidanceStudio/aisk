@@ -132,7 +132,10 @@ def chat(
         _write("\n")
         try:
             text, ok, usage = _render_turn(
-                stream_chat(cfg.endpoint, cfg.api_key, model, messages)
+                stream_chat(
+                    cfg.endpoint, cfg.api_key, model, messages,
+                    prompt_cache=cfg.prompt_cache,
+                )
             )
         except KeyboardInterrupt:
             # Ctrl-C during a reply → drop this exchange, keep chatting.

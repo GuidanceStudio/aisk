@@ -46,7 +46,9 @@ def _run_oneshot(cfg, model: str, messages: list[dict], *, quiet: bool, no_strea
                 collected.append(event.text)
             yield event
 
-    events = _tee(stream_chat(cfg.endpoint, cfg.api_key, model, messages))
+    events = _tee(
+        stream_chat(cfg.endpoint, cfg.api_key, model, messages, prompt_cache=cfg.prompt_cache)
+    )
     header = messages[-1]["content"]
     if quiet and no_stream:
         code = render_quiet_buffered(events)

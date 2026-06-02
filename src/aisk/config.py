@@ -142,6 +142,15 @@ class Config:
     api_key: str = ""
     aliases: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_ALIASES))
     shortcuts: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_SHORTCUTS))
+    prompt_cache: bool = True
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Read a boolean env var. '0', 'false', 'no', 'off' (any case) → False."""
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return val.strip().lower() not in ("0", "false", "no", "off", "")
 
 
 def load_config() -> Config:
@@ -173,6 +182,7 @@ def load_config() -> Config:
         cfg.endpoint = env_endpoint
 
     cfg.api_key = os.environ.get("AISK_API_KEY", "")
+    cfg.prompt_cache = _env_bool("AISK_PROMPT_CACHE", True)
     return cfg
 
 
