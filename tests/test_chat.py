@@ -23,7 +23,7 @@ def _inputs(*values):
 
 
 def test_render_turn_collects_content(capsys):
-    text, ok = _render_turn(
+    text, ok, usage = _render_turn(
         _events(
             ContentChunk("Hello "),
             ContentChunk("world"),
@@ -32,11 +32,12 @@ def test_render_turn_collects_content(capsys):
     )
     assert text == "Hello world"
     assert ok is True
+    assert usage.prompt_tokens == 3
     assert "Hello world" in capsys.readouterr().out
 
 
 def test_render_turn_error():
-    text, ok = _render_turn(_events(ErrorInfo(message="boom")))
+    text, ok, usage = _render_turn(_events(ErrorInfo(message="boom")))
     assert ok is False
 
 
@@ -95,7 +96,7 @@ def test_chat_blank_input_skipped():
     assert len(calls) == 1
 
 
-def test_chat_keyboardinterrupt_exits_clean():
+def test_chat_keyboardinterrupt_at_prompt_exits_clean():
     cfg = Config(api_key="k")
 
     def boom(prompt=""):
@@ -103,3 +104,40 @@ def test_chat_keyboardinterrupt_exits_clean():
 
     with patch("builtins.input", boom):
         assert chat("m", cfg) == 0
+
+
+def test_chat_interrupt_during_reply_continues():
+    """Ctrl-C during a reply drops that exchange but keeps the chat alive."""
+    cfg = Config(api_key="k")
+    captured = []
+
+    def fake_stream(endpoint, api_key, model, messages, **kw):
+        captured.append([m.copy() for m in messages])
+        if len(captured) == 1:
+            yield ContentChunk("partial...")
+            raise KeyboardInterrupt  # stall interrupted mid-reply
+        else:
+            yield ContentChunk("done")
+
+    with patch("aisk.chat.stream_chat", fake_stream), \
+         patch("builtins.input", _inputs("first", "second")):
+        assert chat("m", cfg) == 0
+
+    # Second turn must NOT carry the interrupted 'first' exchange.
+    assert captured[1] == [{"role": "user", "content": "second"}]
+
+
+def test_chat_cumulative_cost(capsys):
+    cfg = Config(api_key="k")
+
+    def fake_stream(endpoint, api_key, model, messages, **kw):
+        yield ContentChunk("x")
+        yield UsageInfo(prompt_tokens=1, completion_tokens=1, cost=0.00001)
+
+    with patch("aisk.chat.stream_chat", fake_stream), \
+         patch("builtins.input", _inputs("a", "b")):
+        chat("m", cfg)
+
+    out = capsys.readouterr().out
+    assert "$0.000010" in out          # per-turn cost
+    assert "Σ $0.000020" in out        # cumulative across two turns
