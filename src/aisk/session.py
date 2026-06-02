@@ -40,6 +40,11 @@ def save_session(
     now = time.time() if now is None else now
     d = _sessions_dir()
     d.mkdir(parents=True, exist_ok=True)
+    # Conversations are stored in plain text — keep the directory owner-only.
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
     path = _session_file(key or _key())
     path.write_text(json.dumps({"model": model, "messages": messages, "updated_at": now}))
     try:

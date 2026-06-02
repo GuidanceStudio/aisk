@@ -917,3 +917,13 @@ Quindi "sempre attivo" = automatico dove supportato + breakpoint espliciti dove 
 - [x] README: nota su prompt caching attivo di default (+ `AISK_PROMPT_CACHE=0` per disattivarlo).
 
 **Note esecuzione (TDD):** breakpoint `cache_control` aggiunto solo per Anthropic/Gemini via OpenRouter (gating su `openrouter.ai` nell'endpoint); altri provider cachano in automatico e su endpoint generici stretti si evita un possibile 400. Default ON; `AISK_PROMPT_CACHE=0/false/no/off` per disattivare.
+
+## M34: Code-review follow-ups (D4 + D1) ✅
+
+Esito della `/code-review` su M31–M33. Gemini+`cache_control` testato live su OpenRouter → nessun errore, quindi il gating del prompt caching resta invariato (Anthropic+Gemini).
+
+### Task
+
+- [x] D4 — `session.py:save_session`: `chmod 0o700` sulla dir `~/.aisk/sessions/` (i file sono già 0o600; la dir era coi permessi di default). Coerente con la postura `chmod 600` del `.env`.
+- [x] D1 — `client.py:_supports_explicit_cache`: rimuovere la ridondanza dei token (`anthropic`/`claude` e `google`/`gemini` matchano entrambi lo stesso slug) → tenere i nomi-famiglia più precisi: `"claude" in m or "gemini" in m`.
+- [x] Test: dir sessioni a `0o700`; `_supports_explicit_cache` resta verde.

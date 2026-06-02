@@ -37,7 +37,7 @@ Event = ContentChunk | ReasoningChunk | UsageInfo | ErrorInfo
 def _supports_explicit_cache(model: str) -> bool:
     """Whether the model needs an explicit cache_control breakpoint (vs automatic)."""
     m = model.lower()
-    return any(p in m for p in ("claude", "anthropic", "gemini", "google"))
+    return "claude" in m or "gemini" in m
 
 
 def _apply_prompt_cache(messages: list[dict], model: str, endpoint: str) -> list[dict]:
