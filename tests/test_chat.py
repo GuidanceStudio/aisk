@@ -142,6 +142,13 @@ def test_suggest_close_alias():
     assert "dsv4f" in s and "dsv4p" in s
 
 
+def test_prompt_brackets_ansi_under_readline():
+    """With readline, the prompt's color codes must be \\x01/\\x02-bracketed."""
+    import aisk.chat as c
+    if c._HAS_READLINE:
+        assert "\x01" in c._PROMPT and "\x02" in c._PROMPT
+
+
 def test_chat_blank_input_skipped():
     cfg = Config(api_key="k")
     calls = []

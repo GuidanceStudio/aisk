@@ -6,8 +6,10 @@ from typing import Generator
 try:
     # Loading readline gives input() line editing + ↑/↓ prompt history for free.
     import readline  # noqa: F401
+
+    _HAS_READLINE = True
 except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
-    pass
+    _HAS_READLINE = False
 
 from aisk import cache, session
 from aisk.client import (
@@ -30,6 +32,14 @@ from aisk.output import (
 )
 
 _BAR = "─" * 60
+
+# readline strips the ESC byte from unbracketed color codes in an input() prompt,
+# so wrap them in \x01 (start-ignore) / \x02 (end-ignore). Without readline those
+# markers would print as garbage, so fall back to the plain colored prompt.
+if _HAS_READLINE:
+    _PROMPT = f"\n\x01{_CYAN}\x02❯\x01{_RESET}\x02 "
+else:
+    _PROMPT = f"\n{_CYAN}❯{_RESET} "
 
 
 def _suggest(typed: str, aliases: dict[str, str], available: set[str] | None) -> list[str]:
@@ -125,7 +135,7 @@ def chat(
 
     while True:
         try:
-            user = input(f"\n{_CYAN}❯{_RESET} ")
+            user = input(_PROMPT)
         except (EOFError, KeyboardInterrupt):
             # Ctrl-D or Ctrl-C at the prompt → leave the chat.
             _write("\n")

@@ -941,3 +941,13 @@ Nella REPL interattiva, poter richiamare i prompt precedenti con ↑/↓ (e torn
 - [x] `chat.py`: `import readline` con `try/except ImportError`, all'avvio del modulo.
 - [x] Verificare che la suite resti verde (i test mockano `input`, quindi non toccati).
 - [x] README: nota che la chat supporta ↑/↓ per i prompt precedenti.
+
+## M36: Fix — prompt chat colorato corrotto con readline (regressione M35) ✅
+
+Dopo M35 (`import readline`), il prompt `❯` mostrava i codici ANSI letterali (`[36m❯[0m`): readline, sul prompt di `input()`, **rimuove il byte ESC** delle sequenze invisibili se non sono "bracketate" con `\x01` (RL_PROMPT_START_IGNORE) / `\x02` (RL_PROMPT_END_IGNORE). Verificato in pty: unbracketed → ESC stripped; bracketed → ESC preservato.
+
+### Task
+
+- [x] `chat.py`: bracketare i codici colore del prompt con `\x01`/`\x02`. Guard: se readline non è disponibile, usare il prompt semplice (i marcatori `\x01`/`\x02` apparirebbero come garbage senza readline). Esporre `_HAS_READLINE` e `_PROMPT`.
+- [x] Test: con readline disponibile `_PROMPT` contiene i bracket `\x01`/`\x02`.
+- [x] Verificare via pty che il fix preservi l'ESC.
