@@ -10,7 +10,7 @@ aisk ge31lite "explain monads in Haskell"
 
 - **Streaming responses** — tokens appear as they arrive
 - **Interactive chat** — `aisk cls46` with no message opens a multi-turn REPL
-- **Reasoning support** — shows thinking tokens for models like o4-mini, DeepSeek-R1
+- **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
 - **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
@@ -58,6 +58,23 @@ The wizard will:
 1. Ask for the API endpoint (default: OpenRouter, press Enter to accept)
 2. Ask for your API key
 3. If config already exists, ask whether to overwrite
+
+### Refreshing the model list
+
+The default aliases evolve as new models ship. Upgrading `aisk` updates the
+*code* defaults but leaves your existing `~/.aisk/conf.toml` untouched, so older
+aliases linger. Run `sync` to realign the `[aliases]` section to the current
+defaults — your endpoint, shortcuts and any custom aliases are kept:
+
+```bash
+aisk sync
+# + added:   clo48, gpt54mini, …
+# - removed: clo47, gpt5mini, o4m, …
+# = kept custom: myalias
+
+# then refresh tab-completion in the current shell:
+eval "$(aisk completions refresh)"
+```
 
 ### Configuration
 
@@ -135,7 +152,7 @@ aisk -S ge31lite "explain monads"
 aisk -q -S cls46 "translate to English: buongiorno" | wc -w
 
 # Pipe from stdin
-echo "summarize this" | aisk gpt5mini
+echo "summarize this" | aisk gpt54mini
 
 # Search with Perplexity
 aisk s what is the mass of the sun

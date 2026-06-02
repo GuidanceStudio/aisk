@@ -1,5 +1,5 @@
 from aisk.aliases import resolve_model
-from aisk.config import DEFAULT_ALIASES
+from aisk.config import DEFAULT_ALIASES, RETIRED_ALIASES
 
 
 def test_known_alias():
@@ -22,11 +22,14 @@ def test_perplexity_aliases():
 
 
 def test_new_aliases_jun_2026():
-    """M24: June 2026 refresh — new/updated aliases point to current models."""
+    """M24/M28: June 2026 refresh — new/updated aliases point to current models."""
     assert resolve_model("clo48", DEFAULT_ALIASES) == "anthropic/claude-opus-4.8"
     assert resolve_model("qwen37", DEFAULT_ALIASES) == "qwen/qwen3.7-max"
     assert resolve_model("ge35flash", DEFAULT_ALIASES) == "google/gemini-3.5-flash"
     assert resolve_model("ge25lite", DEFAULT_ALIASES) == "google/gemini-2.5-flash-lite"
+    # M28: current OpenAI small models are GPT-5.4 mini/nano
+    assert resolve_model("gpt54mini", DEFAULT_ALIASES) == "openai/gpt-5.4-mini"
+    assert resolve_model("gpt54nano", DEFAULT_ALIASES) == "openai/gpt-5.4-nano"
 
 
 def test_aliases_apr_2026_still_current():
@@ -48,27 +51,22 @@ def test_retained_aliases():
     assert resolve_model("ge31pro", DEFAULT_ALIASES) == "google/gemini-3.1-pro-preview"
 
 
-def test_removed_aliases_passthrough():
-    """Aliases removed in M22/M24 must not resolve — they pass through unchanged."""
-    removed = (
-        # removed in M24 (June 2026):
-        "clo47",     # → clo48
-        "qwen36p",   # → qwen37
-        "ge25flash", # dropped (flash tier → ge35flash, cheap tier → ge25lite)
-        # removed in M22 (April 2026):
-        "clo46",    # → clo47
-        "gpt54",    # → gpt55
-        "dsv32",    # → dsv4f
-        "dsr1",     # → dsv4p
-        "glm5",     # → glm51
-        "m25",      # → m27
-        "qwen35p",  # → qwen36p
-        "qwen35",   # dropped (no direct successor)
-        # already stale before M22, still stale:
-        "gpt5", "gpt51", "gpt52", "k25", "ge3flash",
-    )
-    for alias in removed:
+def test_retired_aliases_passthrough():
+    """Every retired alias must not resolve — it passes through unchanged."""
+    for alias in RETIRED_ALIASES:
         assert resolve_model(alias, DEFAULT_ALIASES) == alias, f"{alias} should not resolve"
+
+
+def test_retired_disjoint_from_defaults():
+    """A retired alias key must never also be a current default."""
+    assert RETIRED_ALIASES.isdisjoint(DEFAULT_ALIASES)
+
+
+def test_m28_openai_old_small_models_retired():
+    """M28: GPT-5 mini/nano and o4-mini are retired in favour of GPT-5.4 small."""
+    for alias in ("gpt5mini", "gpt5nano", "o4m"):
+        assert alias in RETIRED_ALIASES
+        assert resolve_model(alias, DEFAULT_ALIASES) == alias
 
 
 def test_all_default_aliases_resolve():
