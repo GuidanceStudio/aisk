@@ -704,3 +704,14 @@ Fonte: OpenRouter, giugno 2026. Aggiornamento mirato: la maggior parte degli ali
 - [x] Aggiornare i test che referenziano `clo47` / `qwen36p` / `ge25flash`; togliere `ge25lite` dalla lista "removed" in `tests/test_aliases.py` (ora è un alias valido) e aggiungere asserzioni per `clo48` / `qwen37` / `ge35flash` / `ge25lite`
 - [x] `grep` su README/docs per gli alias rinominati/rimossi e aggiornarli (es. esempi nel README, riga `# ge = "ge25flash"`)
 - [x] Nota: il `conf.toml` già presente nella home dell'utente non viene toccato — cambia solo il default del codice e il template di `aisk init`
+
+## M25: Migrazione repository a GuidanceStudio ✅
+
+Spostamento del repo su `git@github.com:GuidanceStudio/aisk.git`. I riferimenti storici nei milestone precedenti (es. M23) restano invariati: documentano lo stato del momento.
+
+### Task
+
+- [x] `install.sh`: `REPO` → `git+https://github.com/GuidanceStudio/aisk.git`
+- [x] README: one-liner `curl` (raw.githubusercontent), `uv tool install git+https://...`, `git clone https://...` → owner `GuidanceStudio`
+- [x] Remote `origin` locale → `git@github.com:GuidanceStudio/aisk.git`
+- [x] Push su `GuidanceStudio/aisk` (richiede che il repo esista lato GitHub)

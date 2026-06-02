@@ -22,17 +22,17 @@ aisk ge31lite "explain monads in Haskell"
 
 ```bash
 # One-liner (installs uv if needed, upgrades if already installed)
-curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/aisk/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh | bash
 ```
 
 Or manually:
 
 ```bash
 # From GitHub
-uv tool install git+https://github.com/Ymx1ZQ/aisk.git
+uv tool install git+https://github.com/GuidanceStudio/aisk.git
 
 # From local clone
-git clone https://github.com/Ymx1ZQ/aisk.git
+git clone https://github.com/GuidanceStudio/aisk.git
 cd aisk
 uv tool install .
 ```
