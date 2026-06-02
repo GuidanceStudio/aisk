@@ -130,7 +130,9 @@ the model is named natively (e.g. `gpt-5.5`), so use the pass-through form
 # Ask a question (verbose mode, default)
 aisk ge31lite "what is the CAP theorem?"
 
-# Interactive chat — no message starts a multi-turn REPL (Ctrl-C to exit)
+# Interactive chat — no message starts a multi-turn REPL.
+# Ctrl-C stops the current reply (or exits at the prompt); Ctrl-D exits.
+# Each reply shows its cost and the running conversation total.
 aisk cls46
 
 # No quotes needed — all words after the model are joined automatically

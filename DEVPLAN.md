@@ -814,3 +814,26 @@ Logica di sync:
 - [x] `cli.py`: aggiornare `usage=` con `sync`.
 - [x] Test: `sync_aliases` su un conf con ex-default + alias custom + endpoint custom + shortcuts → ritirati rimossi, default presenti/aggiornati, custom + endpoint + shortcuts preservati; invariante RETIRED∩DEFAULT vuoto; `test_removed_aliases_passthrough` usa `RETIRED_ALIASES`.
 - [x] README: documentare `aisk sync` (e nota: dopo un upgrade che cambia i modelli, lancia `aisk sync` per riallineare i suggeriti).
+
+## M30: Chat — interrompi il turno + costo cumulativo ✅
+
+Due problemi emersi usando la chat:
+1. Una risposta che degenera/non termina (es. DeepSeek che sputa `\` e righe vuote) blocca la REPL: non c'è modo di fermare il singolo turno, Ctrl-C ucciderebbe l'intera sessione, e l'idle-timeout è 120s. → serve poter interrompere il turno corrente restando in chat.
+2. Manca il costo cumulativo della conversazione (c'è solo quello per turno).
+
+### Design
+
+- **Interruzione del turno (Ctrl-C a due livelli):**
+  - Ctrl-C **durante** una risposta → interrompe lo stream di quel turno (chiude la connessione httpx), stampa `(interrupted)`, fa rollback dell'exchange (toglie il turno user + parziale) e torna al prompt.
+  - Ctrl-C **al prompt vuoto** (o Ctrl-D) → esce dalla chat.
+  - Banner aggiornato di conseguenza. Per uscire quindi: Ctrl-C da fermo, o due volte se in mezzo a una risposta.
+- **Costo cumulativo:** accumulare `cost` (e token) su tutta la conversazione; footer per-turno mostra sia il costo della chiamata sia il cumulativo, es. `In 13 | Out 99 | Reasoning 66 | $0.000029  ·  Σ $0.000058`. Approssimazione a 6 decimali. Se il provider non riporta il costo, mostrare almeno i token cumulativi.
+
+### Task
+
+- [x] `chat.py`: `_render_turn` ritorna anche l'`UsageInfo`; lo streaming è racchiuso in un try che cattura `KeyboardInterrupt` → abort del turno (rollback) e ritorno al prompt.
+- [x] `chat.py`: Ctrl-C/EOF al prompt input → uscita pulita (come ora per EOF).
+- [x] `chat.py`: accumulo costi/token di sessione; footer per-turno + cumulativo (Σ) spostato in `chat()`.
+- [x] Banner: descrivere il nuovo comportamento di Ctrl-C.
+- [x] Test: KeyboardInterrupt durante un turno → loop prosegue, storico rollback; KeyboardInterrupt al prompt → esce; costo cumulativo somma correttamente su più turni.
+- [x] README: aggiornare la nota sulla chat (Ctrl-C interrompe la risposta / esce al prompt; costi per-turno e cumulativi).
