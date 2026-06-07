@@ -15,6 +15,9 @@ def test_bash_contains_subcommands():
     assert "init" in script
     assert "models" in script
     assert "completions" in script
+    assert "sync" in script
+    # help must be in the subcommands list, not just --help flag
+    assert "sync models shortcuts completions help" in script
 
 
 def test_bash_completes_after_no_stream_flags():
@@ -44,6 +47,9 @@ def test_zsh_contains_subcommands():
     assert "init" in script
     assert "models" in script
     assert "completions" in script
+    assert "sync" in script
+    # help must be in the subcommands array, not just --help flag
+    assert "init sync models shortcuts completions help" in script
 
 
 def test_cli_completions_bash(capsys):

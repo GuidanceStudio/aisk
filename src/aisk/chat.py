@@ -25,6 +25,7 @@ except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
     _HAS_READLINE = False
 
 from aisk import cache, session
+from aisk.aliases import resolve_model
 from aisk.client import (
     ContentChunk,
     ErrorInfo,
@@ -564,6 +565,21 @@ def _validate_model(model: str, cfg: Config, model_input: str | None) -> int | N
     return 1
 
 
+_SEARCH_MODES = ["auto", "native", "off"]
+_SEARCH_HELP = """\
+  /model <alias>   switch model (e.g. /model cls)
+  /search          toggle web search: auto → native → off → auto
+  /help            show this help""".splitlines()
+
+
+def _compute_tools(search_mode: str) -> list[dict] | None:
+    if search_mode == "off":
+        return None
+    if search_mode == "native":
+        return [{"type": "openrouter:web_search", "parameters": {"engine": "native"}}]
+    return [{"type": "openrouter:web_search"}]  # auto
+
+
 def chat(
     model: str,
     cfg: Config,
@@ -576,14 +592,21 @@ def chat(
     History is kept in memory and resent each turn, so the model sees the whole
     conversation. Enter sends the prompt; Ctrl-J inserts a newline. Ctrl-C
     stops the current reply (or exits at the prompt); Ctrl-D exits.
+
+    In-chat commands (messages starting with /):
+      /model <alias>   switch the model mid-conversation
+      /search          toggle web search: auto → native → off → auto
+      /help            list available commands
     """
     rc = _validate_model(model, cfg, model_input)
     if rc is not None:
         return rc
 
+    search_mode = "auto"
+
     _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
     _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
-    _write(f"  {_DIM}Enter: send · Ctrl-J: newline · Ctrl-C: stop reply/exit · Ctrl-D: exit{_RESET}\n")
+    _write(f"  {_DIM}Search: {search_mode}  ·  Enter: send · Ctrl-J: newline · Ctrl-C: stop reply/exit · Ctrl-D: exit{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
     messages: list[dict] = list(history) if history else []
@@ -595,12 +618,55 @@ def chat(
         try:
             user = _read_user_input(prompt_history)
         except (EOFError, KeyboardInterrupt):
-            # Ctrl-D or Ctrl-C at the prompt → leave the chat.
             _write("\n")
             break
 
         if not user.strip():
             continue
+
+        if user.startswith("/"):
+            parts = user.split(maxsplit=1)
+            cmd = parts[0].lstrip("/")
+            arg = parts[1] if len(parts) > 1 else ""
+
+            if cmd == "help":
+                _write("\n")
+                for line in _SEARCH_HELP:
+                    _write(f"  {_DIM}{line}{_RESET}\n")
+                _write("\n")
+                continue
+            elif cmd == "model":
+                if not arg:
+                    _write(f"\n  {_DIM}Usage: /model <alias>{_RESET}\n\n")
+                    continue
+                new_model_input = arg.strip()
+                new_model = resolve_model(new_model_input, cfg.aliases)
+
+                if new_model_input in cfg.aliases:
+                    pass  # skip cache check for known aliases
+                else:
+                    verdict, available = cache.check_model(cfg.endpoint, cfg.api_key, new_model)
+                    if verdict is False:
+                        _write(f"\n  {_RED}Error: '{new_model_input}' is not a valid model.{_RESET}\n")
+                        suggestions = _suggest(new_model_input, cfg.aliases, available)
+                        if suggestions:
+                            _write(f"  {_DIM}Did you mean: {', '.join(suggestions)}?{_RESET}\n")
+                        _write("\n")
+                        continue
+                    elif verdict is None:
+                        pass  # unverifiable, proceed optimistically
+
+                model = new_model
+                _write(f"\n  {_DIM}Switched to {model}{_RESET}\n\n")
+                continue
+            elif cmd == "search":
+                idx = _SEARCH_MODES.index(search_mode)
+                search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
+                _write(f"\n  {_DIM}Search: {search_mode}{_RESET}\n\n")
+                continue
+            else:
+                _write(f"\n  {_DIM}Unknown command. Type /help for available commands.{_RESET}\n\n")
+                continue
 
         prompt_history.append(user)
         messages.append({"role": "user", "content": user})
@@ -610,18 +676,16 @@ def chat(
                 stream_chat(
                     cfg.endpoint, cfg.api_key, model, messages,
                     prompt_cache=cfg.prompt_cache,
+                    tools=_compute_tools(search_mode),
                 )
             )
         except KeyboardInterrupt:
-            # Ctrl-C during a reply → drop this exchange, keep chatting.
             messages.pop()
             _write(f"\n{_DIM}(interrupted){_RESET}\n")
             continue
 
         if not ok:
-            # Roll back the failed turn so history stays consistent.
             messages.pop()
-            # If nothing has worked yet, the setup is broken — fail fast.
             if not had_success:
                 return 1
             continue

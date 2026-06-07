@@ -16,10 +16,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Ask any LLM from your terminal.",
         usage=(
             "%(prog)s [-q] [-S] <model> [message]\n"
+            "       %(prog)s                  # chat with default model\n"
             "       %(prog)s init\n"
             "       %(prog)s sync\n"
             "       %(prog)s models\n"
             "       %(prog)s shortcuts\n"
+            "       %(prog)s help\n"
             "       %(prog)s completions <bash|zsh|install|refresh>\n"
             "       %(prog)s --resume [message]\n"
             "       %(prog)s --version"
@@ -31,9 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
             "  sync          refresh default aliases while keeping custom config\n"
             "  models        list configured model aliases\n"
             "  shortcuts     print shell shortcut functions from conf.toml\n"
+            "  help          show this help\n"
             "  completions   generate, install, or refresh shell completions\n"
             "\n"
             "examples:\n"
+            "  aisk                   start chat with default model\n"
             "  aisk cls              start interactive chat\n"
             "  aisk gel \"hello\"      ask one question\n"
             "  aisk --resume         reopen the last conversation\n"
@@ -125,8 +129,18 @@ def main(argv: list[str] | None = None) -> int:
         return _resume(parsed, positional)
 
     if not positional:
-        parser.print_help()
-        return 2
+        if sys.stdin.isatty():
+            # No args on a TTY → launch chat with the default model.
+            try:
+                cfg = ensure_config()
+            except ConfigError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                return 1
+            model = resolve_model(cfg.default_model, cfg.aliases)
+            return chat(model, cfg, model_input=cfg.default_model)
+        else:
+            parser.print_help()
+            return 2
 
     command = positional[0]
 
@@ -150,6 +164,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  - removed: {_fmt(summary['removed'])}")
         print(f"  = kept custom: {_fmt(summary['kept'])}")
         print('\nRefresh tab-completion:  eval "$(aisk completions refresh)"')
+        return 0
+
+    if command == "help":
+        parser.print_help()
         return 0
 
     if command == "completions":

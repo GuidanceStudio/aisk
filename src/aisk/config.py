@@ -121,7 +121,7 @@ def _render_conf(
 ) -> str:
     """Render a conf.toml: default alias groups (+ optional custom group),
     the given endpoint, and the given shortcuts."""
-    lines = ["[api]", f'endpoint = "{endpoint}"', "", "[aliases]"]
+    lines = ["[api]", f'endpoint = "{endpoint}"', "", "[defaults]", 'model = "dsf"', "", "[aliases]"]
     for i, (label, items) in enumerate(_ALIAS_GROUPS):
         if i > 0:
             lines.append("")
@@ -168,6 +168,7 @@ class Config:
     aliases: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_ALIASES))
     shortcuts: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_SHORTCUTS))
     prompt_cache: bool = True
+    default_model: str = "dsf"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -198,6 +199,9 @@ def load_config() -> Config:
         shortcuts = data.get("shortcuts", {})
         if shortcuts:
             cfg.shortcuts.update(shortcuts)
+        defaults = data.get("defaults", {})
+        if "model" in defaults:
+            cfg.default_model = defaults["model"]
 
     # An explicit endpoint in the environment (or ~/.aisk/.env, loaded above)
     # wins over conf.toml — lets you point aisk at any OpenAI-compatible

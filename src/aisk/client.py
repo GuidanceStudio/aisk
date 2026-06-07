@@ -105,6 +105,7 @@ def stream_chat(
     prompt_cache: bool = True,
     read_timeout: float = 120.0,
     connect_timeout: float = 10.0,
+    tools: list[dict] | None = None,
 ) -> Generator[Event, None, None]:
     """Stream a chat completion from an OpenAI-compatible endpoint.
 
@@ -113,6 +114,9 @@ def stream_chat(
 
     When *prompt_cache* is set, a cache_control breakpoint is added for providers
     that need it (Anthropic/Gemini via OpenRouter); others cache automatically.
+
+    When *tools* is provided, it is included in the request payload (e.g. for
+    ``openrouter:web_search``). The model decides whether and when to call tools.
 
     Yields typed events as they arrive from the SSE stream.
 
@@ -135,6 +139,8 @@ def stream_chat(
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+    if tools:
+        payload["tools"] = tools
 
     timeout = httpx.Timeout(
         connect=connect_timeout,

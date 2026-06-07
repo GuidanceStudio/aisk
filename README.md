@@ -9,7 +9,9 @@ aisk gel "explain monads in Haskell"
 ## Features
 
 - **Streaming responses** — tokens appear as they arrive
-- **Interactive chat** — `aisk cls` with no message opens a multi-turn REPL
+- **Default model** — `aisk` with no args starts chat with the default model (`dsf`)
+- **Interactive chat** — multi-turn REPL with in-chat commands: `/model`, `/search`, `/help`
+- **Web search** — enable `openrouter:web_search` with `/search` in chat (auto by default)
 - **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
 - **Prompt caching** — on by default; cuts cost on long chats/resumes (`AISK_PROMPT_CACHE=0` to disable)
 - **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
@@ -95,6 +97,9 @@ AISK_API_KEY=sk-or-...
 [api]
 endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
+[defaults]
+model = "dsf"
+
 [aliases]
 gel = "google/gemini-3.1-flash-lite-preview"
 cls = "anthropic/claude-sonnet-4.6"
@@ -132,15 +137,19 @@ the model is named natively (e.g. `gpt-5.5`), so use the pass-through form
 ## Usage
 
 ```bash
+# Start chat with the default model (dsf — DeepSeek V4 Flash)
+aisk
+
 # Ask a question (verbose mode, default)
 aisk gel "what is the CAP theorem?"
 
-# Interactive chat — no message starts a multi-turn REPL.
+# Interactive chat with a specific model.
 # ←/→ move in the prompt; ↑/↓ move within multi-line input or recall previous prompts.
 # Ctrl-J inserts a newline (Ctrl+Enter/Shift+Enter also work when supported).
 # Ctrl-C stops the current reply (or exits at the prompt); Ctrl-D exits.
 # Each reply shows its cost and the running conversation total.
 # A mistyped model is caught up front (e.g. `aisk dsv4` → "did you mean dsf?").
+# In-chat commands: /model <alias>, /search (toggle), /help
 aisk cls
 
 # Resume the last conversation — continue in chat, or one-shot with a message
@@ -175,6 +184,9 @@ aisk sps "latest news on Rust 2026"
 
 # Use a full model name directly (no alias needed)
 aisk perplexity/sonar "latest news on Rust 2026"
+
+# Show help
+aisk help
 
 # List available aliases (grouped by provider)
 aisk models
