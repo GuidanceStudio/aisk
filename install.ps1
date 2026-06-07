@@ -70,10 +70,23 @@ if ($Installed) {
 
 Add-UserBinToPath
 
-Write-Step "[2/3] Setup"
+Write-Step "[2/4] Setup"
 & aisk init
 
-Write-Step "[3/3] Done"
+Write-Step "[3/4] Shell completions"
+$OldProfileEnv = $env:AISK_POWERSHELL_PROFILE
+$env:AISK_POWERSHELL_PROFILE = $PROFILE
+try {
+    & aisk completions install
+} finally {
+    if ($null -eq $OldProfileEnv) {
+        Remove-Item Env:\AISK_POWERSHELL_PROFILE -ErrorAction SilentlyContinue
+    } else {
+        $env:AISK_POWERSHELL_PROFILE = $OldProfileEnv
+    }
+}
+
+Write-Step "[4/4] Done"
 Write-Host "Open a new PowerShell window if 'aisk' is not on PATH yet."
 Write-Host "Then run: aisk --version"
 Write-Host "--------------------------------------------------------------------------------"

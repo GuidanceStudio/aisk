@@ -1161,16 +1161,18 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Estendere `completions.py` con `generate_powershell()` e aggiornare `cli.py` per accettare `aisk completions powershell`. Generare `Register-ArgumentCompleter` per alias, subcommand e flag; generare shortcut come funzioni PowerShell (`function ds { aisk dsf @args }`). L'installazione nel profilo PowerShell può essere gestita da `install.ps1` o da `aisk completions install` quando il runtime rileva PowerShell.
 
 **Tasks:**
-- [ ] Implementare `generate_powershell()` in `completions.py`.
-- [ ] Aggiornare CLI usage/help: `completions <bash|zsh|powershell|install|refresh>`.
-- [ ] Aggiornare `install_completions()`/`generate_refresh()` per gestire PowerShell su Windows senza rompere bash/zsh.
-- [ ] Agganciare `install.ps1` alla configurazione del profilo PowerShell, evitando duplicati.
-- [ ] Test: generazione completions PowerShell con alias, subcommand, flag e shortcut.
-- [ ] Test: installazione nel profilo PowerShell simulato senza duplicati.
-- [ ] Aggiornare README.
-- [ ] Commit & push.
+- [x] Implementare `generate_powershell()` in `completions.py`.
+- [x] Aggiornare CLI usage/help: `completions <bash|zsh|powershell|install|refresh>`.
+- [x] Aggiornare `install_completions()`/`generate_refresh()` per gestire PowerShell su Windows senza rompere bash/zsh.
+- [x] Agganciare `install.ps1` alla configurazione del profilo PowerShell, evitando duplicati.
+- [x] Test: generazione completions PowerShell con alias, subcommand, flag e shortcut.
+- [x] Test: installazione nel profilo PowerShell simulato senza duplicati.
+- [x] Aggiornare README.
+- [x] Commit & push.
 
 **Done when:** `aisk completions powershell` produce uno script caricabile e l'installer Windows può installarlo nel profilo PowerShell senza duplicazioni.
+
+**Execution notes:** `generate_powershell()` registra un `Register-ArgumentCompleter` nativo per alias/subcommand/flag e aggiunge funzioni shortcut PowerShell da `[shortcuts]`. `install_completions()` ora rileva PowerShell, usa `$env:AISK_POWERSHELL_PROFILE` quando fornito dall'installer, crea il profilo se manca e non duplica la riga `aisk completions powershell | Invoke-Expression`. `install.ps1` esegue `aisk completions install` dopo `aisk init`. Test locali: `uv run pytest -q` → `215 passed, 2 skipped`; i due skip richiedono PowerShell reale.
 
 ## M44: Aggiungere guardrail CI cross-platform
 

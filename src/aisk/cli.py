@@ -5,7 +5,14 @@ from aisk import __version__, session
 from aisk.aliases import resolve_model
 from aisk.chat import chat
 from aisk.client import ContentChunk, stream_chat
-from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
+from aisk.completions import (
+    generate_bash,
+    generate_powershell,
+    generate_refresh,
+    generate_shortcuts,
+    generate_zsh,
+    install_completions,
+)
 from aisk.config import ConfigError, ensure_config, init_config, interactive_init, load_config, sync_aliases
 from aisk.output import render_quiet, render_quiet_buffered, render_verbose, render_verbose_buffered
 
@@ -22,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
             "       %(prog)s models\n"
             "       %(prog)s shortcuts\n"
             "       %(prog)s help\n"
-            "       %(prog)s completions <bash|zsh|install|refresh>\n"
+            "       %(prog)s completions <bash|zsh|powershell|install|refresh>\n"
             "       %(prog)s --resume [message]\n"
             "       %(prog)s --version"
         ),
@@ -176,12 +183,14 @@ def main(argv: list[str] | None = None) -> int:
             print(generate_bash())
         elif sub == "zsh":
             print(generate_zsh())
+        elif sub == "powershell":
+            print(generate_powershell())
         elif sub == "install":
             print(install_completions())
         elif sub == "refresh":
             print(generate_refresh())
         else:
-            print("Usage: aisk completions <bash|zsh|install|refresh>", file=sys.stderr)
+            print("Usage: aisk completions <bash|zsh|powershell|install|refresh>", file=sys.stderr)
             return 2
         return 0
 

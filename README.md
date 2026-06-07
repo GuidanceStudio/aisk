@@ -258,7 +258,7 @@ news = "sps"
 # ge = "gef"
 ```
 
-Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsf "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
+Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsf "question"`), loaded automatically by the completion script for your shell.
 
 ```bash
 # See generated functions
@@ -271,7 +271,8 @@ news latest developments on Rust 2026
 
 ## Shell Completions
 
-Tab-completion for model aliases and subcommands. Installed automatically by `install.sh`.
+Tab-completion for model aliases and subcommands. Installed automatically by
+`install.sh` on macOS/Linux and `install.ps1` on Windows.
 
 ```bash
 # Install manually (appends to ~/.bashrc or ~/.zshrc)
@@ -289,6 +290,11 @@ eval "$(aisk completions bash)"
 
 # Zsh — add to ~/.zshrc
 eval "$(aisk completions zsh)"
+```
+
+```powershell
+# PowerShell — add to $PROFILE
+aisk completions powershell | Invoke-Expression
 ```
 
 ## Dependencies
