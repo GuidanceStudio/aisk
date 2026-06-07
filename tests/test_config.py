@@ -1,6 +1,5 @@
-import os
 import sys
-from pathlib import Path
+from unittest.mock import patch
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -134,6 +133,19 @@ def test_init_config_creates_files(tmp_path, monkeypatch):
     assert (tmp_path / ".env").exists()
     assert (tmp_path / "conf.toml").read_text() == DEFAULT_CONF_TOML
     assert "[shortcuts]" in (tmp_path / "conf.toml").read_text()
+    assert (tmp_path / ".env").read_text() == DEFAULT_ENV
+
+
+def test_init_config_writes_files_when_chmod_unavailable(tmp_path, monkeypatch):
+    monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", tmp_path / "conf.toml")
+    monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
+
+    with patch("os.chmod", side_effect=NotImplementedError):
+        actions = init_config()
+
+    assert len(actions) == 2
+    assert (tmp_path / "conf.toml").read_text() == DEFAULT_CONF_TOML
     assert (tmp_path / ".env").read_text() == DEFAULT_ENV
 
 

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from aisk.chat import (
+    _compute_tools,
     _display_width,
     _input_visual_lines,
     _render_turn,
@@ -103,6 +104,22 @@ def test_render_turn_collects_content(capsys):
     assert ok is True
     assert usage.prompt_tokens == 3
     assert "Hello world" in capsys.readouterr().out
+
+
+def test_render_turn_writes_chunks_progressively(capsys):
+    saw_first_before_second = {"value": False}
+
+    def events():
+        yield ContentChunk("first")
+        saw_first_before_second["value"] = "first" in capsys.readouterr().out
+        yield ContentChunk("second")
+
+    text, ok, usage = _render_turn(events())
+
+    assert text == "firstsecond"
+    assert ok is True
+    assert usage is None
+    assert saw_first_before_second["value"] is True
 
 
 def test_render_turn_uses_verbose_section_order(capsys):
@@ -395,8 +412,52 @@ def test_chat_banner_shows_model_and_search(capsys):
     out = capsys.readouterr().out
     assert "aisk chat" in out
     assert "m" in out
-    assert "Search: auto" in out
+    assert "Search: off" in out
     assert "Ctrl-C: stop the reply" not in out
+
+
+def test_chat_default_matches_oneshot_payload_without_search_tools():
+    cfg = Config(api_key="k")
+    tool_values = []
+
+    def fake_stream(endpoint, api_key, model, messages, **kw):
+        tool_values.append(kw.get("tools"))
+        yield ContentChunk("ok")
+
+    with patch("aisk.chat.stream_chat", fake_stream), \
+         patch("builtins.input", _inputs("hi")):
+        chat("m", cfg)
+
+    assert tool_values == [None]
+
+
+def test_compute_tools_only_enables_search_when_requested():
+    assert _compute_tools("off") is None
+    assert _compute_tools("auto") == [{"type": "openrouter:web_search"}]
+    assert _compute_tools("native") == [
+        {"type": "openrouter:web_search", "parameters": {"engine": "native"}}
+    ]
+
+
+def test_read_user_input_falls_back_to_input_without_termios(monkeypatch):
+    import aisk.chat as c
+
+    prompts = []
+    monkeypatch.setattr(c, "termios", None)
+    monkeypatch.setattr(c, "tty", None)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": prompts.append(prompt) or "windows chat",
+    )
+
+    assert c._read_user_input(
+        [],
+        on_ctrl_s=lambda: None,
+        on_ctrl_o=lambda: "ignored",
+        on_ctrl_g=lambda: None,
+        footer=lambda: "ignored",
+    ) == "windows chat"
+    assert "❯" in prompts[0]
 
 
 def test_tty_input_delete_removes_character_at_cursor():

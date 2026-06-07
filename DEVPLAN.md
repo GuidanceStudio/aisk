@@ -1144,13 +1144,15 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Rendere best-effort le operazioni POSIX-only (`chmod` su config/cache/sessioni) e verificare esplicitamente il fallback `input()` quando il raw TTY non è disponibile. La chat Windows basic non avrà ancora shortcut raw (`Ctrl+S`, `Ctrl+O`, `Ctrl+G`), ma non deve crashare; il comportamento deve essere documentato con la combinazione EOF corretta per Windows (`Ctrl+Z` poi Enter).
 
 **Tasks:**
-- [ ] Introdurre helper interni per permessi file best-effort in `config.py`, `cache.py`, `session.py`.
-- [ ] Coprire con test il fallback chat quando `termios`/`tty` non sono disponibili.
-- [ ] Verificare `aisk init`, `models`, one-shot e `--resume` con path Windows simulati dove possibile.
-- [ ] Documentare nel README lo stato "Windows basic" e le differenze temporanee della chat.
-- [ ] Commit & push.
+- [x] Introdurre helper interni per permessi file best-effort in `config.py`, `cache.py`, `session.py`.
+- [x] Coprire con test il fallback chat quando `termios`/`tty` non sono disponibili.
+- [x] Verificare `aisk init`, `models`, one-shot e `--resume` con path Windows simulati dove possibile.
+- [x] Documentare nel README lo stato "Windows basic" e le differenze temporanee della chat.
+- [x] Commit & push.
 
 **Done when:** La suite copre un ambiente senza `termios` e i comandi non-interattivi più chat `input()` non dipendono da primitive POSIX.
+
+**Execution notes:** Aggiunto `permissions.chmod_private()` e sostituiti i `chmod` diretti su config/cache/session. Test coprono `NotImplementedError` da `chmod`, fallback chat senza `termios`/`tty`, e un flusso `models` → one-shot → `--resume` sotto path tipo Windows con spazio. La chat ora parte con `Search: off` per mantenere lo streaming progressivo identico al one-shot; `Ctrl+S` abilita `off → auto → native → off`. Test locali: `uv run pytest -q` → `210 passed, 2 skipped`.
 
 ## M43: Aggiungere completions e shortcut PowerShell
 

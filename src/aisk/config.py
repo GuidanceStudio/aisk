@@ -8,6 +8,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from aisk.permissions import chmod_private
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -322,10 +324,7 @@ def _write_env(api_key: str) -> None:
     """Write the .env file with the given API key, restricting permissions."""
     ENV_FILE.write_text(f"AISK_API_KEY={api_key}\n")
     # The .env holds a secret — keep it readable only by the owner.
-    try:
-        os.chmod(ENV_FILE, 0o600)
-    except OSError:
-        pass
+    chmod_private(ENV_FILE, 0o600)
 
 
 def _write_conf(endpoint: str) -> None:

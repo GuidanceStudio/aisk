@@ -11,7 +11,7 @@ aisk gel "explain monads in Haskell"
 - **Streaming responses** — tokens appear as they arrive
 - **Default model** — `aisk` with no args starts chat with the default model (`dsf`)
 - **Interactive chat** — multi-turn REPL with keyboard shortcuts: `Ctrl+S` search, `Ctrl+O` model selector, `Ctrl+G` help
-- **Web search** — toggle with `Ctrl+S` in chat (cycles auto → native → off → auto)
+- **Web search** — toggle with `Ctrl+S` in chat (off by default; cycles off → auto → native → off)
 - **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
 - **Prompt caching** — on by default; cuts cost on long chats/resumes (`AISK_PROMPT_CACHE=0` to disable)
 - **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
@@ -60,6 +60,14 @@ git clone https://github.com/GuidanceStudio/aisk.git
 cd aisk
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
+
+### Windows status
+
+Windows support is currently basic: install, setup, `models`, one-shot prompts,
+`--resume`, and chat via the normal input prompt are supported. The advanced raw
+chat shortcuts (`Ctrl+S`, `Ctrl+O`, `Ctrl+G`) are Unix-only until the chat input
+backend moves to `prompt_toolkit`. To end chat input on Windows, use `Ctrl+Z`
+then Enter.
 
 ## Setup
 
@@ -162,7 +170,7 @@ aisk gel "what is the CAP theorem?"
 # Interactive chat with a specific model.
 # ←/→ move in the prompt; ↑/↓ move within multi-line input or recall previous prompts.
 # Ctrl-J inserts a newline (Ctrl+Enter/Shift+Enter also work when supported).
-# Ctrl+S toggles web search (auto → native → off → auto).
+# Ctrl+S toggles web search (off → auto → native → off).
 # Ctrl+O opens the fuzzy model selector (arrow keys to navigate, type to filter, Enter to select).
 # Ctrl+G shows help. Ctrl-C stops the current reply (or exits at the prompt); Ctrl-D exits.
 # Each reply shows its cost and the running conversation total.

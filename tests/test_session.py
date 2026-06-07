@@ -1,8 +1,19 @@
+from unittest.mock import patch
+
 from aisk import session
 
 
 def test_save_load_roundtrip():
     session.save_session("m", [{"role": "user", "content": "hi"}], key="A", now=100.0)
+    s = session.load_session(key="A", now=101.0)
+    assert s["model"] == "m"
+    assert s["messages"] == [{"role": "user", "content": "hi"}]
+
+
+def test_save_session_succeeds_when_chmod_unavailable():
+    with patch("os.chmod", side_effect=NotImplementedError):
+        session.save_session("m", [{"role": "user", "content": "hi"}], key="A", now=100.0)
+
     s = session.load_session(key="A", now=101.0)
     assert s["model"] == "m"
     assert s["messages"] == [{"role": "user", "content": "hi"}]
