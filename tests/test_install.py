@@ -159,6 +159,10 @@ def _fake_windows_bin(tmp_path: Path) -> tuple[Path, Path]:
             if ($args.Count -ge 1 -and $args[0] -eq 'init') {{
                 exit 0
             }}
+            if ($args.Count -ge 2 -and $args[0] -eq 'completions' -and $args[1] -eq 'install') {{
+                Write-Output 'fake completions'
+                exit 0
+            }}
             Write-Error ('unexpected aisk args: ' + ($args -join ' '))
             exit 1
             """
@@ -204,6 +208,7 @@ def test_windows_installer_uses_local_checkout_when_run_from_file(tmp_path):
     lines = log.read_text()
     assert f"uv tool install --force --upgrade {ROOT}" in lines
     assert "aisk init" in lines
+    assert "aisk completions install" in lines
 
 
 def test_windows_installer_uses_git_when_run_from_stdin(tmp_path):

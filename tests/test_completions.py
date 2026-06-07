@@ -1,5 +1,12 @@
 from aisk.cli import main
-from aisk.completions import generate_bash, generate_refresh, generate_shortcuts, generate_zsh, install_completions
+from aisk.completions import (
+    generate_bash,
+    generate_powershell,
+    generate_refresh,
+    generate_shortcuts,
+    generate_zsh,
+    install_completions,
+)
 from aisk.config import Config, DEFAULT_ALIASES, DEFAULT_SHORTCUTS
 
 
@@ -52,6 +59,19 @@ def test_zsh_contains_subcommands():
     assert "init sync models shortcuts completions help" in script
 
 
+def test_powershell_contains_aliases_subcommands_flags_and_shortcuts():
+    script = generate_powershell()
+    assert "Register-ArgumentCompleter -Native -CommandName aisk" in script
+    for alias in ("gel", "cls", "s", "sps", "gpt"):
+        assert f"'{alias}'" in script
+    assert "'init'" in script
+    assert "'sync'" in script
+    assert "'--resume'" in script
+    assert "'-S'" in script
+    assert "function ds { aisk dsf @args }" in script
+    assert "function news { aisk sps @args }" in script
+
+
 def test_cli_completions_bash(capsys):
     assert main(["completions", "bash"]) == 0
     out = capsys.readouterr().out
@@ -62,6 +82,12 @@ def test_cli_completions_zsh(capsys):
     assert main(["completions", "zsh"]) == 0
     out = capsys.readouterr().out
     assert "#compdef aisk" in out
+
+
+def test_cli_completions_powershell(capsys):
+    assert main(["completions", "powershell"]) == 0
+    out = capsys.readouterr().out
+    assert "Register-ArgumentCompleter" in out
 
 
 def test_cli_completions_no_shell(capsys):
@@ -104,12 +130,46 @@ def test_install_completions_zsh(tmp_path, monkeypatch):
     assert 'eval "$(aisk completions zsh)"' in zshrc.read_text()
 
 
+def test_install_completions_powershell_fresh(tmp_path, monkeypatch):
+    monkeypatch.delenv("SHELL", raising=False)
+    monkeypatch.setenv("PSModulePath", "C:\\Modules")
+    monkeypatch.setattr("aisk.completions.Path.home", lambda: tmp_path)
+
+    result = install_completions()
+
+    profile = tmp_path / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+    assert "installed" in result
+    assert profile.exists()
+    assert "aisk completions powershell | Invoke-Expression" in profile.read_text()
+
+
+def test_install_completions_powershell_no_duplicate(tmp_path, monkeypatch):
+    monkeypatch.delenv("SHELL", raising=False)
+    monkeypatch.setenv("PSModulePath", "C:\\Modules")
+    monkeypatch.setattr("aisk.completions.Path.home", lambda: tmp_path)
+    profile = tmp_path / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+    profile.parent.mkdir(parents=True)
+    profile.write_text("aisk completions powershell | Invoke-Expression\n")
+
+    result = install_completions()
+
+    assert "already installed" in result
+    assert profile.read_text().count("aisk completions powershell") == 1
+
+
 def test_refresh_generates_script(monkeypatch):
     """Refresh outputs a valid completion script for current shell."""
     monkeypatch.setenv("SHELL", "/bin/bash")
     script = generate_refresh()
     assert "complete -F _aisk_completions aisk" in script
     assert "gel" in script
+
+
+def test_refresh_generates_powershell(monkeypatch):
+    monkeypatch.delenv("SHELL", raising=False)
+    monkeypatch.setenv("PSModulePath", "C:\\Modules")
+    script = generate_refresh()
+    assert "Register-ArgumentCompleter" in script
 
 
 def test_cli_completions_install(capsys, tmp_path, monkeypatch):
