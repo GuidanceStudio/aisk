@@ -23,15 +23,27 @@ def _write(text: str) -> None:
     sys.stdout.flush()
 
 
-def render_verbose(
-    model: str, message: str, events: Generator[Event, None, None]
-) -> int:
-    """Render streaming events with full decoration. Returns exit code."""
-    # Header
-    _write(f"\n{_BLUE}{_SEP}{_RESET}\n")
-    _write(f" {_CYAN}Model:{_RESET} {model} {_DIM}| User: {message}{_RESET}\n")
-    _write(f"{_BLUE}{_SEP}{_RESET}\n")
+def render_verbose_stream(
+    events: Generator[Event, None, None],
+    *,
+    model: str | None = None,
+    message: str | None = None,
+    show_usage: bool = True,
+) -> tuple[str, int, UsageInfo | None]:
+    """Render streaming events with verbose sections.
 
+    Returns (assistant_text, exit_code, usage). If *model* and *message* are
+    provided, a one-shot header is printed. Late reasoning chunks that arrive
+    after answer content are intentionally not rendered: the verbose UI keeps
+    THINKING before ANSWER instead of opening a reasoning section after text has
+    already started.
+    """
+    if model is not None and message is not None:
+        _write(f"\n{_BLUE}{_SEP}{_RESET}\n")
+        _write(f" {_CYAN}Model:{_RESET} {model} {_DIM}| User: {message}{_RESET}\n")
+        _write(f"{_BLUE}{_SEP}{_RESET}\n")
+
+    content_parts: list[str] = []
     in_reasoning = False
     in_content = False
     exit_code = 0
@@ -39,6 +51,8 @@ def render_verbose(
 
     for event in events:
         if isinstance(event, ReasoningChunk):
+            if in_content:
+                continue
             if not in_reasoning:
                 _write(f"\n{_ORANGE}► THINKING{_RESET}\n")
                 in_reasoning = True
@@ -50,6 +64,7 @@ def render_verbose(
             if not in_content:
                 _write(f"\n{_ORANGE}► ANSWER{_RESET}\n")
                 in_content = True
+            content_parts.append(event.text)
             _write(event.text)
 
         elif isinstance(event, UsageInfo):
@@ -59,10 +74,9 @@ def render_verbose(
             _write(f"\n{_RED}Error: {event.message}{_RESET}\n")
             exit_code = 1
 
-    # Footer
     _write("\n\n")
     _write(f"{_BLUE}{_SEP}{_RESET}\n")
-    if usage:
+    if show_usage and usage:
         parts = [f"In {usage.prompt_tokens}", f"Out {usage.completion_tokens}"]
         if usage.reasoning_tokens:
             parts.append(f"Reasoning: {usage.reasoning_tokens}")
@@ -73,6 +87,14 @@ def render_verbose(
         _write(f"{line}\n")
         _write(f"{_BLUE}{_SEP}{_RESET}\n")
 
+    return "".join(content_parts), exit_code, usage
+
+
+def render_verbose(
+    model: str, message: str, events: Generator[Event, None, None]
+) -> int:
+    """Render streaming events with full decoration. Returns exit code."""
+    _, exit_code, _ = render_verbose_stream(events, model=model, message=message)
     return exit_code
 
 

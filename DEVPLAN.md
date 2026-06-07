@@ -1034,7 +1034,7 @@ Eliminare tutti i comandi slash (`/model`, `/search`, `/help`) introdotti in M37
 
 | Tasto | Azione |
 |---|---|
-| `Ctrl+S` | Toggle search mode (`auto → native → off → auto`). Mostra notifica breve. |
+| `Ctrl+S` | Toggle search mode (`auto → native → off → auto`). Lo stato aggiornato è visibile nella barra in basso. |
 | `Ctrl+O` | Apre il model selector fuzzy con navigazione a frecce. |
 | `Ctrl+G` | Mostra help (comandi disponibili). |
 
@@ -1045,7 +1045,7 @@ Nota: `Ctrl+H` richiesto dall'utente ma è già backspace (`\b`) nel raw handler
 #### Ctrl+S — search toggle
 
 - `Ctrl+S` (ASCII 0x13) è XOFF nei terminali, ma `tty.setraw()` disabilita già `IXON`. Come safety aggiuntiva, `stty -ixon` all'inizio del raw mode.
-- Il toggle cicla `_SEARCH_MODES` e stampa una notifica breve dim: `Search: native`.
+- Il toggle cicla `_SEARCH_MODES`; `_read_tty_input` ridisegna subito il footer, quindi non serve una notifica separata.
 - Implementazione: callback `on_search_toggle()` passata a `_read_tty_input`.
 
 #### Ctrl+O — model selector (fuzzy menu)
@@ -1102,3 +1102,118 @@ Premendo `Ctrl+G` (ASCII 0x07), stampa i tasti disponibili e continua. Non inter
 - [x] Test: `_filter_items` unit test.
 - [x] README: aggiornata documentazione chat (shortcut al posto di comandi slash).
 
+## M40: Fix — model selector rendering corrotto alla navigazione
+
+Quando si naviga la lista modelli con ↑/↓ nel fuzzy selector (`Ctrl+O`), il draw completo lascia il cursore sull'ultima riga dell'overlay, mentre `_move_marker` calcola gli spostamenti come se partisse dalla riga `Filter:`. Il primo `Down` quindi ridisegna le righe una posizione sotto quella corretta. Quando si digita un filtro, il repaint parte dalla riga sbagliata e può appendere un secondo overlay invece di sostituire quello esistente.
+
+### Fix
+
+Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile: i redraw completi tornano prima alla cima dell'overlay, cancellano verso il basso, ridisegnano e riportano il cursore sul filtro; la navigazione incrementale parte e termina sempre da quella riga. Le righe aggiornate da `_move_marker` continuano a usare `\x1b[K` per cancellare eventuali residui a fine riga.
+
+### Task
+
+- [x] `chat.py:_model_selector`: aggiungere tracking esplicito della riga corrente e cleanup dalla cima dell'overlay.
+- [x] `chat.py:_move_marker`: partire/terminare sempre dalla riga `Filter:` e cancellare i residui con `\x1b[K`.
+- [x] Test pty: navigazione `Down` mantiene le righe allineate.
+- [x] Test pty: il filtro ridisegna lo stesso overlay senza lasciare la lista precedente visibile.
+
+## M41: Aggiungere installer Windows PowerShell
+
+**Why:** `aisk` oggi si installa bene su Unix via `install.sh`, ma su Windows l'utente deve conoscere `uv` e fare setup manuale. Un installer PowerShell rende il primo utilizzo accessibile senza WSL o Git Bash.
+
+**Approach:** Aggiungere `install.ps1` come installer Windows di prima classe, mantenendo `install.sh` per bash/zsh. Lo script deve rilevare checkout locale tramite `$PSScriptRoot` e usare GitHub quando eseguito da remoto, installare `uv` se manca, fare install/upgrade con `uv tool install`, lanciare `aisk init` e stampare istruzioni Windows chiare. Non aggiungere un `.bat` in questa fase: PowerShell è lo standard giusto per download, PATH e profili; un wrapper batch si valuta solo se serve davvero.
+
+**Tasks:**
+- [ ] Creare `install.ps1` con rilevamento local checkout vs GitHub.
+- [ ] Gestire installazione di `uv` mancante usando il percorso ufficiale Windows.
+- [ ] Eseguire install/upgrade `uv tool install` e poi `aisk init`.
+- [ ] Aggiungere test per il comportamento dell'installer con `uv`/`aisk` finti, saltando solo se PowerShell non è disponibile.
+- [ ] Aggiornare README con installazione Windows via PowerShell.
+- [ ] Commit & push.
+
+**Done when:** `install.ps1` installa o aggiorna `aisk` in un ambiente Windows/PowerShell simulato dai test, e README mostra il comando Windows consigliato.
+
+**Notes:** Niente `install.bat` per ora. Meno entrypoint significa meno comportamento divergente da mantenere.
+
+## M42: Rendere il runtime basic portabile su Windows
+
+**Why:** L'installer da solo non basta: `aisk init`, one-shot, resume e chat base devono funzionare anche quando mancano `termios`, `tty` e `readline`. Questo dà supporto Windows utile prima della parità completa della REPL.
+
+**Approach:** Rendere best-effort le operazioni POSIX-only (`chmod` su config/cache/sessioni) e verificare esplicitamente il fallback `input()` quando il raw TTY non è disponibile. La chat Windows basic non avrà ancora shortcut raw (`Ctrl+S`, `Ctrl+O`, `Ctrl+G`), ma non deve crashare; il comportamento deve essere documentato con la combinazione EOF corretta per Windows (`Ctrl+Z` poi Enter).
+
+**Tasks:**
+- [ ] Introdurre helper interni per permessi file best-effort in `config.py`, `cache.py`, `session.py`.
+- [ ] Coprire con test il fallback chat quando `termios`/`tty` non sono disponibili.
+- [ ] Verificare `aisk init`, `models`, one-shot e `--resume` con path Windows simulati dove possibile.
+- [ ] Documentare nel README lo stato "Windows basic" e le differenze temporanee della chat.
+- [ ] Commit & push.
+
+**Done when:** La suite copre un ambiente senza `termios` e i comandi non-interattivi più chat `input()` non dipendono da primitive POSIX.
+
+## M43: Aggiungere completions e shortcut PowerShell
+
+**Why:** Su Windows l'integrazione shell non può dipendere da bash/zsh. PowerShell deve avere completamento di alias/subcommand e funzioni shortcut equivalenti a quelle generate per Unix.
+
+**Approach:** Estendere `completions.py` con `generate_powershell()` e aggiornare `cli.py` per accettare `aisk completions powershell`. Generare `Register-ArgumentCompleter` per alias, subcommand e flag; generare shortcut come funzioni PowerShell (`function ds { aisk dsf @args }`). L'installazione nel profilo PowerShell può essere gestita da `install.ps1` o da `aisk completions install` quando il runtime rileva PowerShell.
+
+**Tasks:**
+- [ ] Implementare `generate_powershell()` in `completions.py`.
+- [ ] Aggiornare CLI usage/help: `completions <bash|zsh|powershell|install|refresh>`.
+- [ ] Aggiornare `install_completions()`/`generate_refresh()` per gestire PowerShell su Windows senza rompere bash/zsh.
+- [ ] Agganciare `install.ps1` alla configurazione del profilo PowerShell, evitando duplicati.
+- [ ] Test: generazione completions PowerShell con alias, subcommand, flag e shortcut.
+- [ ] Test: installazione nel profilo PowerShell simulato senza duplicati.
+- [ ] Aggiornare README.
+- [ ] Commit & push.
+
+**Done when:** `aisk completions powershell` produce uno script caricabile e l'installer Windows può installarlo nel profilo PowerShell senza duplicazioni.
+
+## M44: Aggiungere guardrail CI cross-platform
+
+**Why:** Senza una matrice Windows reale, il supporto rischia di regredire appena si tocca input, config o installazione. Serve un controllo automatico minimo prima di affrontare la REPL avanzata.
+
+**Approach:** Aggiungere una GitHub Actions matrix su Ubuntu e Windows usando `uv`, con pytest completo dove possibile. I test pty POSIX devono restare skip automatici su Windows; i test PowerShell devono girare solo quando `pwsh` esiste. Questo milestone non cambia feature utente, ma rende verificabile il supporto appena introdotto.
+
+**Tasks:**
+- [ ] Creare workflow CI con Python supportato dal progetto e `uv`.
+- [ ] Eseguire pytest su Ubuntu e Windows.
+- [ ] Marcare o adattare i test POSIX-only perché saltino in modo esplicito su Windows.
+- [ ] Aggiungere un check dedicato per `install.ps1` quando `pwsh` è disponibile.
+- [ ] Documentare nel README/badge o nella sezione contributor il comando locale equivalente.
+- [ ] Commit & push.
+
+**Done when:** La CI esegue la suite su Windows e Ubuntu, con skip intenzionali solo per funzionalità POSIX non ancora migrate.
+
+## M45: Migrare il prompt chat a `prompt_toolkit`
+
+**Why:** Il raw terminal code attuale ha già richiesto fix delicati e resta POSIX-only. `prompt_toolkit` è la strada più solida per input multilinea, history, keybinding e footer cross-platform senza duplicare backend Unix/Windows.
+
+**Approach:** Aggiungere `prompt_toolkit` come dipendenza runtime e introdurre un nuovo backend input per la chat. Il primo step deve coprire prompt multilinea, history in-sessione, footer con modello/search, `Ctrl+S` toggle search e `Ctrl+G` help. Il backend raw POSIX può restare come fallback temporaneo finché la parità non è completa.
+
+**Tasks:**
+- [ ] Aggiungere `prompt_toolkit` alle dipendenze e aggiornare lockfile.
+- [ ] Implementare backend input `prompt_toolkit` per prompt, multilinea, history e footer.
+- [ ] Collegare `Ctrl+S` e `Ctrl+G` nel nuovo backend.
+- [ ] Mantenere o limitare il backend raw POSIX come fallback temporaneo, con selezione esplicita e testata.
+- [ ] Test: input multilinea, history, toggle search e help sul nuovo backend con test non-pty.
+- [ ] Aggiornare README sulle shortcut cross-platform disponibili.
+- [ ] Commit & push.
+
+**Done when:** La chat usa un backend cross-platform per input base e shortcut `Ctrl+S`/`Ctrl+G`, con test deterministici senza pty.
+
+## M46: Migrare il model selector a `prompt_toolkit`
+
+**Why:** `Ctrl+O` e il fuzzy selector sono la parte più fragile del raw terminal code e la più importante per parità Windows. Migrarlo chiude il gap funzionale della chat interattiva.
+
+**Approach:** Reimplementare il selector modelli usando `prompt_toolkit` invece di disegnare manualmente con sequenze ANSI. Deve preservare filtro case-insensitive, navigazione ↑/↓, Enter per selezionare alias o pass-through, Esc/Ctrl+C per annullare e ripristino dell'input corrente. Dopo la parità, rimuovere o isolare il vecchio `_model_selector` raw.
+
+**Tasks:**
+- [ ] Implementare selector modelli `prompt_toolkit` con filtro e navigazione.
+- [ ] Collegare `Ctrl+O` nel backend chat cross-platform.
+- [ ] Preservare validazione modello e messaggio `Switched to ...`.
+- [ ] Test: filtro, navigazione, selezione, pass-through e cancel senza pty.
+- [ ] Rimuovere o confinare il vecchio selector raw POSIX se non più usato.
+- [ ] Aggiornare README: Windows chat con `Ctrl+S`, `Ctrl+O`, `Ctrl+G`.
+- [ ] Commit & push.
+
+**Done when:** Windows e Unix hanno lo stesso comportamento per il selector modelli, coperto da test senza dipendere da pty.
