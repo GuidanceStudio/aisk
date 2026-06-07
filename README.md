@@ -25,40 +25,72 @@ aisk gel "explain monads in Haskell"
 
 ## Install
 
-macOS/Linux:
+### Linux
 
 ```bash
-# One-liner (installs uv if needed, upgrades if already installed)
+# Installs uv if needed, installs/upgrades aisk, runs setup, installs completions.
 curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh | bash
 ```
 
-Windows PowerShell:
+### macOS
+
+```bash
+# Installs uv if needed, installs/upgrades aisk, runs setup, installs completions.
+curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh | bash
+```
+
+### Windows PowerShell
 
 ```powershell
-# One-liner (installs uv if needed, upgrades if already installed)
+# Installs uv if needed, installs/upgrades aisk, runs setup, installs completions.
 powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.ps1 | iex"
 ```
 
-Or manually:
+The installers are idempotent: rerunning them upgrades an existing `aisk`
+install. When run from a local clone, they install that checkout; when piped from
+GitHub, they install `git+https://github.com/GuidanceStudio/aisk.git`.
+
+After installation, open a new terminal or run the shell-specific reload command
+shown by the installer, then verify:
 
 ```bash
-# From GitHub
-uv tool install git+https://github.com/GuidanceStudio/aisk.git
-
-# From local clone
-git clone https://github.com/GuidanceStudio/aisk.git
-cd aisk
-./install.sh   # installs this checkout, then runs setup + completions
-
-# Minimal local install without setup/completions
-uv tool install .
+aisk --version
 ```
 
 ```powershell
-# Windows PowerShell from local clone
+aisk --version
+```
+
+### Manual install
+
+From GitHub, on any platform with `uv`:
+
+```bash
+uv tool install git+https://github.com/GuidanceStudio/aisk.git
+aisk init
+aisk completions install
+```
+
+From a local clone on Linux/macOS:
+
+```bash
+git clone https://github.com/GuidanceStudio/aisk.git
+cd aisk
+./install.sh
+```
+
+From a local clone on Windows:
+
+```powershell
 git clone https://github.com/GuidanceStudio/aisk.git
 cd aisk
 powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+For a minimal local developer install without setup or completions:
+
+```bash
+uv tool install .
 ```
 
 ### Windows status
@@ -274,7 +306,7 @@ Tab-completion for model aliases and subcommands. Installed automatically by
 `install.sh` on macOS/Linux and `install.ps1` on Windows.
 
 ```bash
-# Install manually (appends to ~/.bashrc or ~/.zshrc)
+# Install manually (appends to ~/.bashrc, ~/.zshrc, or PowerShell $PROFILE)
 aisk completions install
 
 # Refresh after changing aliases/shortcuts in conf.toml
@@ -301,6 +333,7 @@ aisk completions powershell | Invoke-Expression
 Minimal by design:
 
 - `httpx` — streaming HTTP
+- `prompt-toolkit` — cross-platform interactive chat prompt and shortcuts
 - `python-dotenv` — loads `.env`
 - `tomli` — TOML parser (Python <3.11 only; 3.11+ uses stdlib `tomllib`)
 

@@ -1229,3 +1229,16 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Done when:** Windows e Unix hanno lo stesso comportamento per il selector modelli, coperto da test senza dipendere da pty.
 
 **Execution notes:** `Ctrl+O` nel backend prompt_toolkit chiude temporaneamente il prompt con un sentinel interno, apre il selector prompt_toolkit e poi ripristina il draft dell'utente. Il selector usa un completer case-insensitive basato su `_filter_items`, seleziona alias esatti o primo match filtrato, consente pass-through per model ID diretti e annulla con Ctrl+C/EOF. Il vecchio selector raw resta confinato a `AISK_CHAT_BACKEND=raw` e ai test pty legacy. Test locali: `uv run pytest -q` → `224 passed, 2 skipped`.
+
+## M47: Documentazione finale installer e Windows
+
+**Why:** Dopo l'introduzione di `install.ps1`, completions PowerShell e chat cross-platform, la README deve mostrare chiaramente i percorsi di installazione per Linux, macOS e Windows, senza lasciare ambiguità sullo script giusto.
+
+**Tasks:**
+- [x] Separare la sezione install in Linux, macOS e Windows PowerShell.
+- [x] Documentare cosa fanno gli installer e il comportamento local checkout vs GitHub.
+- [x] Aggiornare install manuale, completions e dipendenze.
+- [x] Aggiungere test README per la presenza degli installer delle tre piattaforme.
+- [x] Commit & push.
+
+**Done when:** La README contiene istruzioni di installazione complete per Linux, macOS e Windows, e i test bloccano regressioni documentali sulle tre piattaforme.
