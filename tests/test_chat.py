@@ -346,14 +346,15 @@ def test_tty_input_continuation_line_has_no_extra_prompt():
     assert "❯ prima\r\n❯ seconda" not in out
 
 
-def test_chat_banner_mentions_ctrl_j(capsys):
+def test_chat_banner_shows_model_and_search(capsys):
     cfg = Config(api_key="k")
     with patch("builtins.input", _inputs()):
         chat("m", cfg)
 
     out = capsys.readouterr().out
-    assert "Enter: send" in out
-    assert "Ctrl-J: newline" in out
+    assert "aisk chat" in out
+    assert "m" in out
+    assert "Search: auto" in out
     assert "Ctrl-C: stop the reply" not in out
 
 

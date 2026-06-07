@@ -823,8 +823,7 @@ def chat(
 
     sys.stdout.write("\x1b[2J\x1b[H")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
-    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
-    _write(f"  {_DIM}Search: {search_mode}  ·  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}\n")
+    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
     messages: list[dict] = list(history) if history else []
