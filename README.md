@@ -63,11 +63,10 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 ### Windows status
 
-Windows support is currently basic: install, setup, `models`, one-shot prompts,
-`--resume`, and chat via the normal input prompt are supported. The advanced raw
-chat shortcuts (`Ctrl+S`, `Ctrl+O`, `Ctrl+G`) are Unix-only until the chat input
-backend moves to `prompt_toolkit`. To end chat input on Windows, use `Ctrl+Z`
-then Enter.
+Windows support includes install, setup, `models`, one-shot prompts, `--resume`,
+and interactive chat. The chat prompt uses `prompt_toolkit` for cross-platform
+multiline input, history, `Ctrl+S` search toggle, and `Ctrl+G` help. The model
+selector (`Ctrl+O`) is still Unix-only until the selector migration is complete.
 
 ## Setup
 

@@ -45,6 +45,7 @@ def _run_pty_python(code: str, payload: bytes) -> str:
     env["PYTHONPATH"] = os.pathsep.join(
         [os.path.abspath("src"), env.get("PYTHONPATH", "")]
     )
+    env["AISK_CHAT_BACKEND"] = "raw"
 
     master, slave = pty.openpty()
     proc = subprocess.Popen(
@@ -104,6 +105,7 @@ def _run_pty_until_marker(code: str, payload: bytes, marker: bytes) -> str:
     env["PYTHONPATH"] = os.pathsep.join(
         [os.path.abspath("src"), env.get("PYTHONPATH", "")]
     )
+    env["AISK_CHAT_BACKEND"] = "raw"
 
     master, slave = pty.openpty()
     proc = subprocess.Popen(

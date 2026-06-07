@@ -1199,15 +1199,17 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Aggiungere `prompt_toolkit` come dipendenza runtime e introdurre un nuovo backend input per la chat. Il primo step deve coprire prompt multilinea, history in-sessione, footer con modello/search, `Ctrl+S` toggle search e `Ctrl+G` help. Il backend raw POSIX può restare come fallback temporaneo finché la parità non è completa.
 
 **Tasks:**
-- [ ] Aggiungere `prompt_toolkit` alle dipendenze e aggiornare lockfile.
-- [ ] Implementare backend input `prompt_toolkit` per prompt, multilinea, history e footer.
-- [ ] Collegare `Ctrl+S` e `Ctrl+G` nel nuovo backend.
-- [ ] Mantenere o limitare il backend raw POSIX come fallback temporaneo, con selezione esplicita e testata.
-- [ ] Test: input multilinea, history, toggle search e help sul nuovo backend con test non-pty.
-- [ ] Aggiornare README sulle shortcut cross-platform disponibili.
-- [ ] Commit & push.
+- [x] Aggiungere `prompt_toolkit` alle dipendenze e aggiornare lockfile.
+- [x] Implementare backend input `prompt_toolkit` per prompt, multilinea, history e footer.
+- [x] Collegare `Ctrl+S` e `Ctrl+G` nel nuovo backend.
+- [x] Mantenere o limitare il backend raw POSIX come fallback temporaneo, con selezione esplicita e testata.
+- [x] Test: input multilinea, history, toggle search e help sul nuovo backend con test non-pty.
+- [x] Aggiornare README sulle shortcut cross-platform disponibili.
+- [x] Commit & push.
 
 **Done when:** La chat usa un backend cross-platform per input base e shortcut `Ctrl+S`/`Ctrl+G`, con test deterministici senza pty.
+
+**Execution notes:** Aggiunta dipendenza `prompt-toolkit>=3.0` e lock aggiornato. `_read_user_input()` usa prompt_toolkit di default sui TTY, mantiene `AISK_CHAT_BACKEND=raw` per forzare il backend POSIX legacy e `AISK_CHAT_BACKEND=input` per fallback semplice. Il backend prompt_toolkit copre history in-sessione, input multilinea, toolbar/footer, `Ctrl+S`, `Ctrl+G` e `Ctrl+J`. I test pty legacy forzano `raw`; i nuovi test del backend sono non-pty. Test locali: `uv run pytest -q` → `220 passed, 2 skipped`.
 
 ## M46: Migrare il model selector a `prompt_toolkit`
 

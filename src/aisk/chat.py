@@ -3,6 +3,7 @@ from __future__ import annotations
 import codecs
 import difflib
 import os
+import re
 import select
 import sys
 import unicodedata
@@ -24,6 +25,15 @@ except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
     readline = None
     _HAS_READLINE = False
 
+try:
+    from prompt_toolkit import PromptSession as _PromptSession
+    from prompt_toolkit.history import InMemoryHistory as _InMemoryHistory
+    from prompt_toolkit.key_binding import KeyBindings as _KeyBindings
+except ImportError:  # pragma: no cover - dependency is declared for normal installs
+    _PromptSession = None
+    _InMemoryHistory = None
+    _KeyBindings = None
+
 from aisk import cache, session
 from aisk.aliases import resolve_model
 from aisk.client import (
@@ -44,6 +54,7 @@ from aisk.output import (
 
 _BAR = "─" * 60
 _CLEAR_SCREEN = "\x1b[2J\x1b[H"
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z~]")
 _BRACKETED_PASTE_ON = "\x1b[?2004h"
 _BRACKETED_PASTE_OFF = "\x1b[?2004l"
 _BRACKETED_PASTE_START = b"\x1b[200~"
@@ -199,6 +210,19 @@ def _read_user_input(
     footer: Any = None,
 ) -> str:
     """Read one chat prompt, preserving multi-line terminal paste as one value."""
+    backend = os.environ.get("AISK_CHAT_BACKEND", "auto").strip().lower()
+
+    if backend == "input":
+        return input(_PROMPT)
+
+    if backend != "raw" and _PromptSession is not None and sys.stdin.isatty() and sys.stdout.isatty():
+        return _read_prompt_toolkit_input(
+            prompt_history,
+            on_ctrl_s=on_ctrl_s,
+            on_ctrl_g=on_ctrl_g,
+            footer=footer,
+        )
+
     if termios is None or tty is None or not (sys.stdin.isatty() and sys.stdout.isatty()):
         return input(_PROMPT)
 
@@ -206,6 +230,51 @@ def _read_user_input(
         return _read_tty_input(prompt_history, on_ctrl_s=on_ctrl_s, on_ctrl_o=on_ctrl_o, on_ctrl_g=on_ctrl_g, footer=footer)
     except termios.error:
         return input(_PROMPT)
+
+
+def _plain(text: str) -> str:
+    return _ANSI_RE.sub("", text)
+
+
+def _read_prompt_toolkit_input(
+    prompt_history: list[str],
+    *,
+    on_ctrl_s: Any = None,
+    on_ctrl_g: Any = None,
+    footer: Any = None,
+) -> str:
+    history = _InMemoryHistory()
+    for value in prompt_history:
+        history.append_string(value)
+
+    bindings = _KeyBindings()
+
+    @bindings.add("c-s")
+    def _(event) -> None:
+        if callable(on_ctrl_s):
+            on_ctrl_s()
+            event.app.invalidate()
+
+    @bindings.add("c-g")
+    def _(event) -> None:
+        if callable(on_ctrl_g):
+            on_ctrl_g()
+            event.app.invalidate()
+
+    @bindings.add("c-j")
+    def _(event) -> None:
+        event.current_buffer.insert_text("\n")
+
+    def bottom_toolbar() -> str:
+        return _plain(footer()) if callable(footer) else ""
+
+    session = _PromptSession(history=history, key_bindings=bindings)
+    return session.prompt(
+        _TTY_PROMPT_TEXT,
+        multiline=True,
+        prompt_continuation=lambda width, line_number, is_soft_wrap: _TTY_CONTINUATION,
+        bottom_toolbar=bottom_toolbar,
+    )
 
 
 def _read_tty_input(

@@ -51,6 +51,7 @@ def _run_pty_python(code: str, payload: bytes) -> str:
     env["PYTHONPATH"] = os.pathsep.join(
         [os.path.abspath("src"), env.get("PYTHONPATH", "")]
     )
+    env["AISK_CHAT_BACKEND"] = "raw"
 
     master, slave = pty.openpty()
     proc = subprocess.Popen(
@@ -458,6 +459,101 @@ def test_read_user_input_falls_back_to_input_without_termios(monkeypatch):
         footer=lambda: "ignored",
     ) == "windows chat"
     assert "❯" in prompts[0]
+
+
+def test_prompt_toolkit_input_multiline_history_footer_and_shortcuts(monkeypatch):
+    import aisk.chat as c
+
+    captured = {}
+    calls = []
+
+    class FakeHistory:
+        def __init__(self):
+            self.values = []
+            captured["history"] = self.values
+
+        def append_string(self, value):
+            self.values.append(value)
+
+    class FakeBindings:
+        def __init__(self):
+            self.handlers = {}
+            captured["bindings"] = self
+
+        def add(self, *keys):
+            def decorate(fn):
+                self.handlers[keys] = fn
+                return fn
+            return decorate
+
+    class FakeApp:
+        def __init__(self):
+            self.invalidated = 0
+
+        def invalidate(self):
+            self.invalidated += 1
+
+    class FakeEvent:
+        def __init__(self):
+            self.app = FakeApp()
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            captured["session_kwargs"] = kwargs
+
+        def prompt(self, prompt, **kwargs):
+            captured["prompt"] = prompt
+            captured["prompt_kwargs"] = kwargs
+            event = FakeEvent()
+            captured["bindings"].handlers[("c-s",)](event)
+            captured["bindings"].handlers[("c-g",)](event)
+            captured["invalidated"] = event.app.invalidated
+            return "prima\nseconda"
+
+    monkeypatch.setattr(c, "_PromptSession", FakeSession)
+    monkeypatch.setattr(c, "_InMemoryHistory", FakeHistory)
+    monkeypatch.setattr(c, "_KeyBindings", FakeBindings)
+
+    result = c._read_prompt_toolkit_input(
+        ["vecchio prompt"],
+        on_ctrl_s=lambda: calls.append("search"),
+        on_ctrl_g=lambda: calls.append("help"),
+        footer=lambda: "\x1b[2mfooter\x1b[0m",
+    )
+
+    assert result == "prima\nseconda"
+    assert captured["history"] == ["vecchio prompt"]
+    assert captured["session_kwargs"]["key_bindings"] is captured["bindings"]
+    assert captured["prompt"] == "❯ "
+    assert captured["prompt_kwargs"]["multiline"] is True
+    assert captured["prompt_kwargs"]["bottom_toolbar"]() == "footer"
+    assert calls == ["search", "help"]
+    assert captured["invalidated"] == 2
+
+
+def test_read_user_input_can_force_raw_backend(monkeypatch):
+    import aisk.chat as c
+
+    monkeypatch.setenv("AISK_CHAT_BACKEND", "raw")
+    monkeypatch.setattr(c.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(c.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(c, "termios", object())
+    monkeypatch.setattr(c, "tty", object())
+    monkeypatch.setattr(c, "_read_tty_input", lambda *args, **kwargs: "raw")
+
+    assert c._read_user_input([]) == "raw"
+
+
+def test_read_user_input_prefers_prompt_toolkit_on_tty(monkeypatch):
+    import aisk.chat as c
+
+    monkeypatch.delenv("AISK_CHAT_BACKEND", raising=False)
+    monkeypatch.setattr(c.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(c.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(c, "_PromptSession", object())
+    monkeypatch.setattr(c, "_read_prompt_toolkit_input", lambda *args, **kwargs: "ptk")
+
+    assert c._read_user_input([]) == "ptk"
 
 
 def test_tty_input_delete_removes_character_at_cursor():
