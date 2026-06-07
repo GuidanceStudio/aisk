@@ -322,15 +322,13 @@ def test_model_selector_filter_matching():
 # ── Tests: banner shows shortcuts ──────────────────────────────────
 
 def test_chat_banner_shows_shortcut_keys(capsys):
-    """The chat banner lists Ctrl+S, Ctrl+O, Ctrl+G shortcuts."""
+    """The chat banner does not mention slash commands (shortcuts are in footer)."""
     cfg = Config(api_key="k")
     with patch("builtins.input", _inputs()):
         chat("m", cfg)
 
     out = capsys.readouterr().out
-    assert "Ctrl+S: search" in out
-    assert "Ctrl+O: model" in out
-    assert "Ctrl+G: help" in out
+    assert "aisk chat" in out
     assert "/model" not in out
     assert "/search" not in out
     assert "/help" not in out
