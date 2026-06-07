@@ -1218,12 +1218,14 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Reimplementare il selector modelli usando `prompt_toolkit` invece di disegnare manualmente con sequenze ANSI. Deve preservare filtro case-insensitive, navigazione ↑/↓, Enter per selezionare alias o pass-through, Esc/Ctrl+C per annullare e ripristino dell'input corrente. Dopo la parità, rimuovere o isolare il vecchio `_model_selector` raw.
 
 **Tasks:**
-- [ ] Implementare selector modelli `prompt_toolkit` con filtro e navigazione.
-- [ ] Collegare `Ctrl+O` nel backend chat cross-platform.
-- [ ] Preservare validazione modello e messaggio `Switched to ...`.
-- [ ] Test: filtro, navigazione, selezione, pass-through e cancel senza pty.
-- [ ] Rimuovere o confinare il vecchio selector raw POSIX se non più usato.
-- [ ] Aggiornare README: Windows chat con `Ctrl+S`, `Ctrl+O`, `Ctrl+G`.
-- [ ] Commit & push.
+- [x] Implementare selector modelli `prompt_toolkit` con filtro e navigazione.
+- [x] Collegare `Ctrl+O` nel backend chat cross-platform.
+- [x] Preservare validazione modello e messaggio `Switched to ...`.
+- [x] Test: filtro, navigazione, selezione, pass-through e cancel senza pty.
+- [x] Rimuovere o confinare il vecchio selector raw POSIX se non più usato.
+- [x] Aggiornare README: Windows chat con `Ctrl+S`, `Ctrl+O`, `Ctrl+G`.
+- [x] Commit & push.
 
 **Done when:** Windows e Unix hanno lo stesso comportamento per il selector modelli, coperto da test senza dipendere da pty.
+
+**Execution notes:** `Ctrl+O` nel backend prompt_toolkit chiude temporaneamente il prompt con un sentinel interno, apre il selector prompt_toolkit e poi ripristina il draft dell'utente. Il selector usa un completer case-insensitive basato su `_filter_items`, seleziona alias esatti o primo match filtrato, consente pass-through per model ID diretti e annulla con Ctrl+C/EOF. Il vecchio selector raw resta confinato a `AISK_CHAT_BACKEND=raw` e ai test pty legacy. Test locali: `uv run pytest -q` → `224 passed, 2 skipped`.

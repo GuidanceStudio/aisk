@@ -7,6 +7,7 @@ import re
 import select
 import sys
 import unicodedata
+from dataclasses import dataclass
 from typing import Any, Generator
 
 try:
@@ -27,10 +28,14 @@ except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
 
 try:
     from prompt_toolkit import PromptSession as _PromptSession
+    from prompt_toolkit.completion import Completer as _Completer
+    from prompt_toolkit.completion import Completion as _Completion
     from prompt_toolkit.history import InMemoryHistory as _InMemoryHistory
     from prompt_toolkit.key_binding import KeyBindings as _KeyBindings
 except ImportError:  # pragma: no cover - dependency is declared for normal installs
     _PromptSession = None
+    _Completer = None
+    _Completion = None
     _InMemoryHistory = None
     _KeyBindings = None
 
@@ -219,6 +224,7 @@ def _read_user_input(
         return _read_prompt_toolkit_input(
             prompt_history,
             on_ctrl_s=on_ctrl_s,
+            on_ctrl_o=on_ctrl_o,
             on_ctrl_g=on_ctrl_g,
             footer=footer,
         )
@@ -236,10 +242,16 @@ def _plain(text: str) -> str:
     return _ANSI_RE.sub("", text)
 
 
+@dataclass(frozen=True)
+class _ModelSelectRequest:
+    draft: str
+
+
 def _read_prompt_toolkit_input(
     prompt_history: list[str],
     *,
     on_ctrl_s: Any = None,
+    on_ctrl_o: Any = None,
     on_ctrl_g: Any = None,
     footer: Any = None,
 ) -> str:
@@ -261,6 +273,10 @@ def _read_prompt_toolkit_input(
             on_ctrl_g()
             event.app.invalidate()
 
+    @bindings.add("c-o")
+    def _(event) -> None:
+        event.app.exit(result=_ModelSelectRequest(event.current_buffer.text))
+
     @bindings.add("c-j")
     def _(event) -> None:
         event.current_buffer.insert_text("\n")
@@ -269,12 +285,71 @@ def _read_prompt_toolkit_input(
         return _plain(footer()) if callable(footer) else ""
 
     session = _PromptSession(history=history, key_bindings=bindings)
-    return session.prompt(
-        _TTY_PROMPT_TEXT,
-        multiline=True,
-        prompt_continuation=lambda width, line_number, is_soft_wrap: _TTY_CONTINUATION,
-        bottom_toolbar=bottom_toolbar,
-    )
+    draft = ""
+    while True:
+        result = session.prompt(
+            _TTY_PROMPT_TEXT,
+            multiline=True,
+            default=draft,
+            prompt_continuation=lambda width, line_number, is_soft_wrap: _TTY_CONTINUATION,
+            bottom_toolbar=bottom_toolbar,
+        )
+        if isinstance(result, _ModelSelectRequest):
+            if callable(on_ctrl_o):
+                on_ctrl_o()
+            draft = result.draft
+            continue
+        return result
+
+
+class _ModelCompleter(_Completer if _Completer is not None else object):
+    def __init__(self, aliases: dict[str, str]):
+        self.aliases = aliases
+
+    def get_completions(self, document, complete_event):
+        query = document.text
+        for alias, model_id in _filter_items(query, self.aliases):
+            yield _Completion(
+                alias,
+                start_position=-len(query),
+                display=alias,
+                display_meta=model_id,
+            )
+
+
+def _prompt_toolkit_model_selector(aliases: dict[str, str]) -> str | None:
+    session = _PromptSession()
+    try:
+        value = session.prompt(
+            "Model: ",
+            completer=_ModelCompleter(aliases),
+            complete_while_typing=True,
+            bottom_toolbar="Type to filter; Enter selects; Ctrl-C cancels",
+        ).strip()
+    except (KeyboardInterrupt, EOFError):
+        return None
+
+    if not value:
+        return None
+    if value in aliases:
+        return aliases[value]
+
+    matches = _filter_items(value, aliases)
+    if matches:
+        return matches[0][1]
+    return value
+
+
+def _select_model_prompt(aliases: dict[str, str]) -> str | None:
+    backend = os.environ.get("AISK_CHAT_BACKEND", "auto").strip().lower()
+    if backend == "raw" and termios is not None and tty is not None:
+        return _model_selector(aliases)
+    if _PromptSession is not None:
+        return _prompt_toolkit_model_selector(aliases)
+    if termios is not None and tty is not None and sys.stdin.isatty() and sys.stdout.isatty():
+        return _model_selector(aliases)
+    value = input("Model: ").strip()
+    return value or None
 
 
 def _read_tty_input(
@@ -887,7 +962,7 @@ def chat(
 
     def _select_model() -> str | None:
         nonlocal model
-        selected = _model_selector(cfg.aliases)
+        selected = _select_model_prompt(cfg.aliases)
         if selected is None:
             return None
         new_model = _handle_model_switch(selected, cfg)

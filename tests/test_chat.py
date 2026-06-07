@@ -531,6 +531,119 @@ def test_prompt_toolkit_input_multiline_history_footer_and_shortcuts(monkeypatch
     assert captured["invalidated"] == 2
 
 
+def test_prompt_toolkit_input_ctrl_o_preserves_draft(monkeypatch):
+    import aisk.chat as c
+
+    captured = {"defaults": []}
+    calls = []
+
+    class FakeHistory:
+        def append_string(self, value):
+            pass
+
+    class FakeBindings:
+        def __init__(self):
+            self.handlers = {}
+            captured["bindings"] = self
+
+        def add(self, *keys):
+            def decorate(fn):
+                self.handlers[keys] = fn
+                return fn
+            return decorate
+
+    class FakeBuffer:
+        text = "draft text"
+
+    class FakeApp:
+        def __init__(self):
+            self.result = None
+
+        def exit(self, *, result=None):
+            self.result = result
+
+        def invalidate(self):
+            pass
+
+    class FakeEvent:
+        def __init__(self):
+            self.current_buffer = FakeBuffer()
+            self.app = FakeApp()
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            pass
+
+        def prompt(self, prompt, **kwargs):
+            captured["defaults"].append(kwargs.get("default"))
+            if len(captured["defaults"]) == 1:
+                event = FakeEvent()
+                captured["bindings"].handlers[("c-o",)](event)
+                return event.app.result
+            return "draft text plus"
+
+    monkeypatch.setattr(c, "_PromptSession", FakeSession)
+    monkeypatch.setattr(c, "_InMemoryHistory", FakeHistory)
+    monkeypatch.setattr(c, "_KeyBindings", FakeBindings)
+
+    result = c._read_prompt_toolkit_input(
+        [],
+        on_ctrl_o=lambda: calls.append("model"),
+    )
+
+    assert result == "draft text plus"
+    assert calls == ["model"]
+    assert captured["defaults"] == ["", "draft text"]
+
+
+def test_prompt_toolkit_model_selector_exact_alias(monkeypatch):
+    import aisk.chat as c
+
+    class FakeSession:
+        def prompt(self, prompt, **kwargs):
+            return "cls"
+
+    monkeypatch.setattr(c, "_PromptSession", lambda: FakeSession())
+
+    assert c._prompt_toolkit_model_selector({
+        "cls": "anthropic/claude-sonnet-4.6",
+        "dsf": "deepseek/deepseek-v4-flash",
+    }) == "anthropic/claude-sonnet-4.6"
+
+
+def test_prompt_toolkit_model_selector_filter_selects_first_match(monkeypatch):
+    import aisk.chat as c
+
+    class FakeSession:
+        def prompt(self, prompt, **kwargs):
+            return "deep"
+
+    monkeypatch.setattr(c, "_PromptSession", lambda: FakeSession())
+
+    assert c._prompt_toolkit_model_selector({
+        "abc": "other/model",
+        "dsf": "deepseek/deepseek-v4-flash",
+    }) == "deepseek/deepseek-v4-flash"
+
+
+def test_prompt_toolkit_model_selector_pass_through_and_cancel(monkeypatch):
+    import aisk.chat as c
+
+    values = iter(["vendor/model", KeyboardInterrupt()])
+
+    class FakeSession:
+        def prompt(self, prompt, **kwargs):
+            value = next(values)
+            if isinstance(value, BaseException):
+                raise value
+            return value
+
+    monkeypatch.setattr(c, "_PromptSession", lambda: FakeSession())
+
+    assert c._prompt_toolkit_model_selector({"dsf": "deepseek/deepseek-v4-flash"}) == "vendor/model"
+    assert c._prompt_toolkit_model_selector({"dsf": "deepseek/deepseek-v4-flash"}) is None
+
+
 def test_read_user_input_can_force_raw_backend(monkeypatch):
     import aisk.chat as c
 
