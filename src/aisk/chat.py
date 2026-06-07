@@ -572,6 +572,21 @@ _SEARCH_HELP = """\
   /help            show this help""".splitlines()
 
 
+def _format_model_list(aliases: dict[str, str]) -> list[str]:
+    """Format the available aliases grouped by provider, for in-chat display."""
+    groups: dict[str, list[tuple[str, str]]] = {}
+    for alias, model_name in sorted(aliases.items()):
+        provider = model_name.split("/", 1)[0] if "/" in model_name else "Other"
+        groups.setdefault(provider, []).append((alias, model_name))
+
+    lines: list[str] = []
+    for provider in sorted(groups):
+        lines.append(f"  {provider.capitalize()}")
+        for alias, model_name in groups[provider]:
+            lines.append(f"    {alias:12s} {model_name}")
+    return lines
+
+
 def _compute_tools(search_mode: str) -> list[dict] | None:
     if search_mode == "off":
         return None
@@ -637,7 +652,10 @@ def chat(
                 continue
             elif cmd == "model":
                 if not arg:
-                    _write(f"\n  {_DIM}Usage: /model <alias>{_RESET}\n\n")
+                    _write("\n")
+                    for line in _format_model_list(cfg.aliases):
+                        _write(f"  {_DIM}{line}{_RESET}\n")
+                    _write(f"\n  {_DIM}Type /model <alias> to switch.{_RESET}\n\n")
                     continue
                 new_model_input = arg.strip()
                 new_model = resolve_model(new_model_input, cfg.aliases)
