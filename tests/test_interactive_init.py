@@ -1,9 +1,11 @@
 import re
+import sys
 from pathlib import Path
 
 from aisk.config import (
     DEFAULT_CONF_TOML,
     DEFAULT_ENDPOINT,
+    _readline_safe_prompt,
     interactive_init,
     _mask_key,
     _read_existing_key,
@@ -51,6 +53,18 @@ class TestReadExistingKey:
         _setup(tmp_path, monkeypatch)
         (tmp_path / ".env").write_text("AISK_API_KEY=\n")
         assert _read_existing_key() == ""
+
+
+class TestReadlineSafePrompt:
+    def test_brackets_ansi_when_readline_loaded(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "readline", object())
+        prompt = _readline_safe_prompt("  \033[33mOverwrite? [y/N]\033[0m ")
+        assert prompt == "  \x01\033[33m\x02Overwrite? [y/N]\x01\033[0m\x02 "
+
+    def test_leaves_prompt_plain_without_readline(self, monkeypatch):
+        monkeypatch.delitem(sys.modules, "readline", raising=False)
+        prompt = "  \033[33mOverwrite? [y/N]\033[0m "
+        assert _readline_safe_prompt(prompt) == prompt
 
 
 class TestInteractiveInitFreshSetup:

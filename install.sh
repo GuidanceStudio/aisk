@@ -3,6 +3,17 @@ set -euo pipefail
 
 REPO="git+https://github.com/GuidanceStudio/aisk.git"
 
+INSTALL_TARGET="$REPO"
+INSTALL_SOURCE="GitHub"
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
+if [[ -n "$SCRIPT_SOURCE" && -f "$SCRIPT_SOURCE" ]]; then
+    SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd -P)"
+    if [[ -f "$SCRIPT_DIR/pyproject.toml" && -d "$SCRIPT_DIR/src/aisk" ]]; then
+        INSTALL_TARGET="$SCRIPT_DIR"
+        INSTALL_SOURCE="local checkout"
+    fi
+fi
+
 # Colors
 BLUE='\033[38;5;33m'
 CYAN='\033[36m'
@@ -29,10 +40,12 @@ fi
 # Install or upgrade
 if uv tool list 2>/dev/null | grep -q '^aisk '; then
     echo -e "  ${CYAN}[1/3]${RESET} Upgrading aisk..."
-    uv tool install --force --upgrade "$REPO"
+    echo -e "  ${DIM}source: ${INSTALL_SOURCE} (${INSTALL_TARGET})${RESET}"
+    uv tool install --force --upgrade "$INSTALL_TARGET"
 else
     echo -e "  ${CYAN}[1/3]${RESET} Installing aisk..."
-    uv tool install "$REPO"
+    echo -e "  ${DIM}source: ${INSTALL_SOURCE} (${INSTALL_TARGET})${RESET}"
+    uv tool install "$INSTALL_TARGET"
 fi
 
 echo ""

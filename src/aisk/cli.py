@@ -14,7 +14,30 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aisk",
         description="Ask any LLM from your terminal.",
-        usage="%(prog)s [-q] [-S] <model> <message>\n       %(prog)s init\n       %(prog)s sync\n       %(prog)s models\n       %(prog)s shortcuts\n       %(prog)s completions <bash|zsh|install|refresh>\n       %(prog)s --version",
+        usage=(
+            "%(prog)s [-q] [-S] <model> [message]\n"
+            "       %(prog)s init\n"
+            "       %(prog)s sync\n"
+            "       %(prog)s models\n"
+            "       %(prog)s shortcuts\n"
+            "       %(prog)s completions <bash|zsh|install|refresh>\n"
+            "       %(prog)s --resume [message]\n"
+            "       %(prog)s --version"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "commands:\n"
+            "  init          create ~/.aisk config and set/update AISK_API_KEY\n"
+            "  sync          refresh default aliases while keeping custom config\n"
+            "  models        list configured model aliases\n"
+            "  shortcuts     print shell shortcut functions from conf.toml\n"
+            "  completions   generate, install, or refresh shell completions\n"
+            "\n"
+            "examples:\n"
+            "  aisk cls46                 start interactive chat\n"
+            "  aisk ge31lite \"hello\"      ask one question\n"
+            "  aisk --resume              reopen the last conversation\n"
+        ),
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"

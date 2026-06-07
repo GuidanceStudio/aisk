@@ -23,6 +23,13 @@ def test_version(capsys):
 
 def test_no_args_returns_2(capsys):
     assert main([]) == 2
+    out = capsys.readouterr().out
+    assert "commands:" in out
+    assert "init          create ~/.aisk config" in out
+    assert "sync          refresh default aliases" in out
+    assert "models        list configured model aliases" in out
+    assert "completions   generate, install, or refresh shell completions" in out
+    assert "aisk cls46" in out
 
 
 def test_init_subcommand(capsys, tmp_path, monkeypatch):
