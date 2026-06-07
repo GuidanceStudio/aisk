@@ -104,42 +104,6 @@ def _terminal_columns() -> int:
     return columns if columns > 0 else 80
 
 
-def _terminal_rows() -> int:
-    try:
-        rows = os.get_terminal_size(sys.stdout.fileno()).lines
-    except OSError:
-        return 24
-    return rows if rows > 0 else 24
-
-
-def _repaint_footer() -> None:
-    """Draw the shortcut bar at the very bottom of the terminal."""
-    rows = _terminal_rows()
-    sys.stdout.write("\x1b[s")
-    sys.stdout.write(f"\x1b[{rows};1H")
-    sys.stdout.write(f"\x1b[2K{_DIM}Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}")
-    sys.stdout.write("\x1b[u")
-    sys.stdout.flush()
-
-
-def _draw_header(model: str, search_mode: str) -> None:
-    """Draw the aisk chat header."""
-    _write(f"\r\n{_BLUE}{_BAR}{_RESET}")
-    _write(f"\r\n  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}")
-    _write(f"\r\n{_BLUE}{_BAR}{_RESET}\r\n")
-
-
-def _refresh_header(model: str, search_mode: str) -> None:
-    """Update the header line without clearing the screen."""
-    sys.stdout.write("\x1b[s")
-    sys.stdout.write("\x1b[H")
-    sys.stdout.write(f"\x1b[2K{_BLUE}{_BAR}{_RESET}")
-    sys.stdout.write(f"\r\n\x1b[2K  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}")
-    sys.stdout.write(f"\r\n\x1b[2K{_BLUE}{_BAR}{_RESET}")
-    sys.stdout.write("\x1b[u")
-    sys.stdout.flush()
-
-
 def _wrapped_rows(line: str, columns: int, start_column: int = 0) -> int:
     first_width = max(1, columns - start_column)
     width = _display_width(line, start_column=start_column)
@@ -234,13 +198,14 @@ def _read_user_input(
     on_ctrl_s: Any = None,
     on_ctrl_o: Any = None,
     on_ctrl_g: Any = None,
+    footer: Any = None,
 ) -> str:
     """Read one chat prompt, preserving multi-line terminal paste as one value."""
     if termios is None or tty is None or not (sys.stdin.isatty() and sys.stdout.isatty()):
         return input(_PROMPT)
 
     try:
-        return _read_tty_input(prompt_history, on_ctrl_s=on_ctrl_s, on_ctrl_o=on_ctrl_o, on_ctrl_g=on_ctrl_g)
+        return _read_tty_input(prompt_history, on_ctrl_s=on_ctrl_s, on_ctrl_o=on_ctrl_o, on_ctrl_g=on_ctrl_g, footer=footer)
     except termios.error:
         return input(_PROMPT)
 
@@ -251,6 +216,7 @@ def _read_tty_input(
     on_ctrl_s: Any = None,
     on_ctrl_o: Any = None,
     on_ctrl_g: Any = None,
+    footer: Any = None,
 ) -> str:
     fd = sys.stdin.fileno()
     old_attrs = termios.tcgetattr(fd)
@@ -269,7 +235,6 @@ def _read_tty_input(
 
     def redraw() -> None:
         nonlocal rendered_cursor_row
-        _repaint_footer()
         if rendered_cursor_row > 0:
             sys.stdout.write("\r" + "\x1b[1A\r" * rendered_cursor_row)
         else:
@@ -278,11 +243,18 @@ def _read_tty_input(
         value = text()
         sys.stdout.write(_TTY_PROMPT + _render_input_value(value))
 
+        if callable(footer):
+            ft = footer()
+            if ft:
+                sys.stdout.write(f"\r\n  {ft}")
+
         columns = _terminal_columns()
         cursor_row, cursor_column = _input_cursor_position(value, cursor, columns)
         end_row, _ = _input_cursor_position(value, len(value), columns)
         if end_row > cursor_row:
             sys.stdout.write("\x1b[1A" * (end_row - cursor_row))
+        if callable(footer) and footer():
+            sys.stdout.write("\x1b[1A")
         sys.stdout.write("\r")
         if cursor_column:
             sys.stdout.write(f"\x1b[{cursor_column}C")
@@ -840,20 +812,23 @@ def chat(
 
     search_mode = "auto"
 
-    _draw_header(model, search_mode)
-    _repaint_footer()
+    _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
+    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
+    _write(f"  {_DIM}Search: {search_mode}  ·  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}\n")
+    _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
     messages: list[dict] = list(history) if history else []
     prompt_history: list[str] = []
     totals = {"cost": 0.0, "in": 0, "out": 0, "any_cost": False}
     had_success = False
 
+    def _make_footer() -> str:
+        return f"{_DIM}{model} · {search_mode}  |  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}"
+
     def _toggle_search() -> None:
         nonlocal search_mode
         idx = _SEARCH_MODES.index(search_mode)
         search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
-        _refresh_header(model, search_mode)
-        _repaint_footer()
         _write(f"\r\n  {_DIM}Search: {search_mode}{_RESET}\r\n")
 
     def _select_model() -> str | None:
@@ -864,8 +839,6 @@ def chat(
         new_model = _handle_model_switch(selected, cfg)
         if new_model is not None:
             model = new_model
-            _refresh_header(model, search_mode)
-            _repaint_footer()
         return new_model
 
     def _show_help() -> None:
@@ -873,7 +846,6 @@ def chat(
         for line in _SHORTCUT_HELP:
             _write(f"  {_DIM}{line}{_RESET}\r\n")
         _write("\r\n")
-        _repaint_footer()
 
     while True:
         try:
@@ -882,6 +854,7 @@ def chat(
                 on_ctrl_s=_toggle_search,
                 on_ctrl_o=_select_model,
                 on_ctrl_g=_show_help,
+                footer=_make_footer,
             )
         except (EOFError, KeyboardInterrupt):
             _write("\n")
@@ -919,7 +892,6 @@ def chat(
 
         if usage:
             _write(f"{_DIM}{_format_usage(usage, totals)}{_RESET}\n")
-            _repaint_footer()
 
     return 0
 
