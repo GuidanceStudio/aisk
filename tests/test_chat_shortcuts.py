@@ -74,6 +74,19 @@ def _run_pty_python(code: str, payload: bytes) -> str:
                 out += os.read(master, 4096)
 
         proc.wait(timeout=2)
+
+        deadline = time.time() + 0.2
+        while time.time() < deadline:
+            ready, _, _ = select.select([master], [], [], 0.02)
+            if not ready:
+                continue
+            try:
+                chunk = os.read(master, 4096)
+            except OSError:
+                break
+            if not chunk:
+                break
+            out += chunk
     finally:
         if proc.poll() is None:
             proc.terminate()

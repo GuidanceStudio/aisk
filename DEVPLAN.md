@@ -1124,16 +1124,18 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Aggiungere `install.ps1` come installer Windows di prima classe, mantenendo `install.sh` per bash/zsh. Lo script deve rilevare checkout locale tramite `$PSScriptRoot` e usare GitHub quando eseguito da remoto, installare `uv` se manca, fare install/upgrade con `uv tool install`, lanciare `aisk init` e stampare istruzioni Windows chiare. Non aggiungere un `.bat` in questa fase: PowerShell è lo standard giusto per download, PATH e profili; un wrapper batch si valuta solo se serve davvero.
 
 **Tasks:**
-- [ ] Creare `install.ps1` con rilevamento local checkout vs GitHub.
-- [ ] Gestire installazione di `uv` mancante usando il percorso ufficiale Windows.
-- [ ] Eseguire install/upgrade `uv tool install` e poi `aisk init`.
-- [ ] Aggiungere test per il comportamento dell'installer con `uv`/`aisk` finti, saltando solo se PowerShell non è disponibile.
-- [ ] Aggiornare README con installazione Windows via PowerShell.
-- [ ] Commit & push.
+- [x] Creare `install.ps1` con rilevamento local checkout vs GitHub.
+- [x] Gestire installazione di `uv` mancante usando il percorso ufficiale Windows.
+- [x] Eseguire install/upgrade `uv tool install` e poi `aisk init`.
+- [x] Aggiungere test per il comportamento dell'installer con `uv`/`aisk` finti, saltando solo se PowerShell non è disponibile.
+- [x] Aggiornare README con installazione Windows via PowerShell.
+- [x] Commit & push.
 
 **Done when:** `install.ps1` installa o aggiorna `aisk` in un ambiente Windows/PowerShell simulato dai test, e README mostra il comando Windows consigliato.
 
 **Notes:** Niente `install.bat` per ora. Meno entrypoint significa meno comportamento divergente da mantenere.
+
+**Execution notes:** Test locali M41: `uv run pytest -q tests/test_install.py` → `3 passed, 2 skipped`; i due test skippati richiedono PowerShell (`pwsh`/`powershell`) e sono pronti per Windows/CI. Suite completa dopo la correzione del drain pty nei test chat: `uv run pytest -q` → `202 passed, 2 skipped`.
 
 ## M42: Rendere il runtime basic portabile su Windows
 
