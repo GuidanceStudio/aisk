@@ -76,6 +76,34 @@ def test_reasoning_chunks():
     assert events[1] == ContentChunk(text="answer")
 
 
+def test_reasoning_details_chunks():
+    lines = _make_sse(
+        {
+            "choices": [{
+                "delta": {
+                    "reasoning_details": [
+                        {"type": "reasoning.text", "text": "step one"},
+                        {"type": "reasoning.summary", "summary": "summary"},
+                    ]
+                }
+            }]
+        },
+        {"choices": [{"delta": {"content": "answer"}}]},
+    )
+    resp = _mock_stream_response(lines)
+    client = MagicMock()
+    client.stream.return_value = resp
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+
+    with patch("aisk.client.httpx.Client", return_value=client):
+        events = list(stream_chat(ENDPOINT, API_KEY, MODEL, MESSAGE))
+
+    assert events[0] == ReasoningChunk(text="step one")
+    assert events[1] == ReasoningChunk(text="summary")
+    assert events[2] == ContentChunk(text="answer")
+
+
 def test_error_in_chunk():
     lines = _make_sse(
         {"error": {"message": "rate limited", "code": 429}},

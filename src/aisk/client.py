@@ -34,6 +34,27 @@ class ErrorInfo:
 Event = ContentChunk | ReasoningChunk | UsageInfo | ErrorInfo
 
 
+def _reasoning_detail_texts(details) -> list[str]:
+    """Extract displayable reasoning text from OpenRouter reasoning_details."""
+    if isinstance(details, dict):
+        details = [details]
+    if not isinstance(details, list):
+        return []
+
+    texts: list[str] = []
+    for item in details:
+        if isinstance(item, str):
+            if item:
+                texts.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        text = item.get("text") or item.get("summary")
+        if isinstance(text, str) and text:
+            texts.append(text)
+    return texts
+
+
 def _supports_explicit_cache(model: str) -> bool:
     """Whether the model needs an explicit cache_control breakpoint (vs automatic)."""
     m = model.lower()
@@ -202,6 +223,8 @@ def stream_chat(
                     delta = choices[0].get("delta", {})
 
                     # Reasoning content (varies by provider)
+                    for rc in _reasoning_detail_texts(delta.get("reasoning_details")):
+                        yield ReasoningChunk(text=rc)
                     for key in ("reasoning_content", "reasoning"):
                         rc = delta.get(key)
                         if rc:
