@@ -189,6 +189,17 @@ def test_windows_installer_files_and_readme_exist():
     assert "irm " in readme
 
 
+def test_readme_documents_linux_macos_and_windows_installers():
+    readme = (ROOT / "README.md").read_text()
+
+    assert "### Linux" in readme
+    assert "### macOS" in readme
+    assert "### Windows PowerShell" in readme
+    assert "install.sh" in readme
+    assert "install.ps1" in readme
+    assert "aisk completions install" in readme
+
+
 def test_windows_installer_uses_local_checkout_when_run_from_file(tmp_path):
     ps = _powershell()
     if ps is None:
