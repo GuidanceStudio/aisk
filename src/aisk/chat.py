@@ -246,6 +246,7 @@ def _read_tty_input(
         if callable(footer):
             ft = footer()
             if ft:
+                sys.stdout.write(f"\r\n  {_DIM}───{_RESET}")
                 sys.stdout.write(f"\r\n  {ft}")
 
         columns = _terminal_columns()
@@ -254,7 +255,7 @@ def _read_tty_input(
         if end_row > cursor_row:
             sys.stdout.write("\x1b[1A" * (end_row - cursor_row))
         if callable(footer) and footer():
-            sys.stdout.write("\x1b[1A")
+            sys.stdout.write("\x1b[1A\x1b[1A")
         sys.stdout.write("\r")
         if cursor_column:
             sys.stdout.write(f"\x1b[{cursor_column}C")
@@ -411,6 +412,11 @@ def _read_tty_input(
     try:
         tty.setraw(fd)
         sys.stdout.write(_BRACKETED_PASTE_ON + "\r\n" + _TTY_PROMPT)
+        if callable(footer):
+            ft = footer()
+            if ft:
+                sys.stdout.write(f"\r\n  {_DIM}───{_RESET}")
+                sys.stdout.write(f"\r\n  {ft}")
         sys.stdout.flush()
 
         while True:
@@ -812,7 +818,8 @@ def chat(
 
     search_mode = "auto"
 
-    _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
+    sys.stdout.write("\x1b[2J\x1b[H")
+    _write(f"{_BLUE}{_BAR}{_RESET}\n")
     _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
     _write(f"  {_DIM}Search: {search_mode}  ·  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
