@@ -358,7 +358,7 @@ def _read_tty_input(
         end_row, _ = _input_cursor_position(value, len(value), columns)
         if end_row > cursor_row:
             sys.stdout.write("\x1b[1B" * (end_row - cursor_row))
-        sys.stdout.write("\r\n")
+        sys.stdout.write("\r\n\x1b[J")
         sys.stdout.flush()
         return value
 
@@ -736,12 +736,15 @@ def _render_turn(
     for event in events:
         if isinstance(event, ReasoningChunk):
             if not in_reasoning:
+                _write(f"{_DIM}{_BAR}{_RESET}\n")
                 _write(f"{_DIM}thinking…{_RESET}\n")
                 in_reasoning = True
             _write(f"{_DIM_ITALIC}{event.text}{_RESET}")
         elif isinstance(event, ContentChunk):
             if in_reasoning and not in_content:
-                _write("\n\n")
+                _write(f"\n{_DIM}{_BAR}{_RESET}\n\n")
+            elif not in_content:
+                _write(f"{_DIM}{_BAR}{_RESET}\n")
             in_content = True
             content_parts.append(event.text)
             _write(event.text)
@@ -751,7 +754,7 @@ def _render_turn(
             _write(f"\n{_RED}Error: {event.message}{_RESET}\n")
             ok = False
 
-    _write("\n")
+    _write(f"\n{_DIM}{_BAR}{_RESET}\n")
     return "".join(content_parts), ok, usage
 
 
@@ -830,7 +833,7 @@ def chat(
     had_success = False
 
     def _make_footer() -> str:
-        return f"{_DIM}{model} · {search_mode}  |  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}"
+        return f"{_DIM}{model}  |  Search: {search_mode}  |  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}"
 
     def _toggle_search() -> None:
         nonlocal search_mode
