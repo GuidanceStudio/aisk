@@ -33,7 +33,7 @@ from aisk.client import (
     UsageInfo,
     stream_chat,
 )
-from aisk.config import Config
+from aisk.config import ALIAS_RENAMES, Config
 from aisk.output import (
     _BLUE,
     _CYAN,
@@ -495,9 +495,16 @@ def _read_tty_input(prompt_history: list[str]) -> str:
 def _suggest(typed: str, aliases: dict[str, str], available: set[str] | None) -> list[str]:
     """Close-match suggestions for a mistyped model: aliases first, then IDs."""
     matches = difflib.get_close_matches(typed, list(aliases), n=3, cutoff=0.6)
+    if not matches:
+        retired = difflib.get_close_matches(typed, list(ALIAS_RENAMES), n=3, cutoff=0.5)
+        matches = [
+            ALIAS_RENAMES[old]
+            for old in retired
+            if ALIAS_RENAMES[old] in aliases
+        ]
     if not matches and available:
         matches = difflib.get_close_matches(typed, sorted(available), n=3, cutoff=0.5)
-    return matches
+    return list(dict.fromkeys(matches))
 
 
 def _render_turn(
@@ -567,8 +574,8 @@ def chat(
     """Run an interactive multi-turn chat REPL. Returns an exit code.
 
     History is kept in memory and resent each turn, so the model sees the whole
-    conversation. Ctrl-C stops the current reply (or exits at the prompt);
-    Ctrl-D exits.
+    conversation. Enter sends the prompt; Ctrl-J inserts a newline. Ctrl-C
+    stops the current reply (or exits at the prompt); Ctrl-D exits.
     """
     rc = _validate_model(model, cfg, model_input)
     if rc is not None:

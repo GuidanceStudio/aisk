@@ -1,9 +1,9 @@
 from aisk.aliases import resolve_model
-from aisk.config import DEFAULT_ALIASES, RETIRED_ALIASES
+from aisk.config import ALIAS_RENAMES, DEFAULT_ALIASES, RETIRED_ALIASES
 
 
 def test_known_alias():
-    assert resolve_model("ge31lite", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
+    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
 
 
 def test_unknown_passthrough():
@@ -23,32 +23,32 @@ def test_perplexity_aliases():
 
 def test_new_aliases_jun_2026():
     """M24/M28: June 2026 refresh — new/updated aliases point to current models."""
-    assert resolve_model("clo48", DEFAULT_ALIASES) == "anthropic/claude-opus-4.8"
-    assert resolve_model("qwen37", DEFAULT_ALIASES) == "qwen/qwen3.7-max"
-    assert resolve_model("ge35flash", DEFAULT_ALIASES) == "google/gemini-3.5-flash"
+    assert resolve_model("clo", DEFAULT_ALIASES) == "anthropic/claude-opus-4.8"
+    assert resolve_model("qwen", DEFAULT_ALIASES) == "qwen/qwen3.7-max"
+    assert resolve_model("gef", DEFAULT_ALIASES) == "google/gemini-3.5-flash"
     assert resolve_model("ge25lite", DEFAULT_ALIASES) == "google/gemini-2.5-flash-lite"
     # M28: current OpenAI small models are GPT-5.4 mini/nano
-    assert resolve_model("gpt54mini", DEFAULT_ALIASES) == "openai/gpt-5.4-mini"
-    assert resolve_model("gpt54nano", DEFAULT_ALIASES) == "openai/gpt-5.4-nano"
+    assert resolve_model("gptmini", DEFAULT_ALIASES) == "openai/gpt-5.4-mini"
+    assert resolve_model("gptnano", DEFAULT_ALIASES) == "openai/gpt-5.4-nano"
 
 
 def test_aliases_apr_2026_still_current():
     """M22 aliases that remain current in June 2026."""
-    assert resolve_model("gpt55", DEFAULT_ALIASES) == "openai/gpt-5.5"
-    assert resolve_model("gpt55pro", DEFAULT_ALIASES) == "openai/gpt-5.5-pro"
-    assert resolve_model("dsv4f", DEFAULT_ALIASES) == "deepseek/deepseek-v4-flash"
-    assert resolve_model("dsv4p", DEFAULT_ALIASES) == "deepseek/deepseek-v4-pro"
-    assert resolve_model("glm51", DEFAULT_ALIASES) == "z-ai/glm-5.1"
-    assert resolve_model("m27", DEFAULT_ALIASES) == "minimax/minimax-m2.7"
-    assert resolve_model("kimi26", DEFAULT_ALIASES) == "moonshotai/kimi-k2.6"
+    assert resolve_model("gpt", DEFAULT_ALIASES) == "openai/gpt-5.5"
+    assert resolve_model("gptpro", DEFAULT_ALIASES) == "openai/gpt-5.5-pro"
+    assert resolve_model("dsf", DEFAULT_ALIASES) == "deepseek/deepseek-v4-flash"
+    assert resolve_model("dsp", DEFAULT_ALIASES) == "deepseek/deepseek-v4-pro"
+    assert resolve_model("glm", DEFAULT_ALIASES) == "z-ai/glm-5.1"
+    assert resolve_model("mm", DEFAULT_ALIASES) == "minimax/minimax-m2.7"
+    assert resolve_model("kimi", DEFAULT_ALIASES) == "moonshotai/kimi-k2.6"
 
 
 def test_retained_aliases():
     """Aliases kept from the previous catalog (still current in apr 2026)."""
-    assert resolve_model("cls46", DEFAULT_ALIASES) == "anthropic/claude-sonnet-4.6"
-    assert resolve_model("clh45", DEFAULT_ALIASES) == "anthropic/claude-haiku-4.5"
-    assert resolve_model("ge31lite", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
-    assert resolve_model("ge31pro", DEFAULT_ALIASES) == "google/gemini-3.1-pro-preview"
+    assert resolve_model("cls", DEFAULT_ALIASES) == "anthropic/claude-sonnet-4.6"
+    assert resolve_model("clh", DEFAULT_ALIASES) == "anthropic/claude-haiku-4.5"
+    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
+    assert resolve_model("gep", DEFAULT_ALIASES) == "google/gemini-3.1-pro-preview"
 
 
 def test_retired_aliases_passthrough():
@@ -60,6 +60,11 @@ def test_retired_aliases_passthrough():
 def test_retired_disjoint_from_defaults():
     """A retired alias key must never also be a current default."""
     assert RETIRED_ALIASES.isdisjoint(DEFAULT_ALIASES)
+
+
+def test_alias_renames_point_from_retired_to_current_aliases():
+    assert set(ALIAS_RENAMES).issubset(RETIRED_ALIASES)
+    assert set(ALIAS_RENAMES.values()).issubset(DEFAULT_ALIASES)
 
 
 def test_m28_openai_old_small_models_retired():

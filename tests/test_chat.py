@@ -171,10 +171,10 @@ def test_chat_rolls_back_error_after_success():
 
 
 def test_chat_skips_preflight_for_alias():
-    cfg = Config(api_key="k")  # "dsv4f" is a default alias
+    cfg = Config(api_key="k")  # "dsf" is a default alias
     with patch("aisk.chat.cache.check_model") as chk, \
          patch("builtins.input", _inputs()):
-        chat("deepseek/deepseek-v4-flash", cfg, model_input="dsv4f")
+        chat("deepseek/deepseek-v4-flash", cfg, model_input="dsf")
     chk.assert_not_called()
 
 
@@ -196,7 +196,7 @@ def test_chat_invalid_model_aborts_with_suggestions(capsys):
     inp.assert_not_called()  # never reached the prompt
     out = capsys.readouterr().out
     assert "not a valid model" in out
-    assert "dsv4f" in out  # suggested the close alias
+    assert "dsf" in out  # suggested the close alias
 
 
 def test_chat_unverifiable_model_proceeds():
@@ -208,7 +208,7 @@ def test_chat_unverifiable_model_proceeds():
 
 def test_suggest_close_alias():
     s = _suggest("dsv4", DEFAULT_ALIASES, None)
-    assert "dsv4f" in s and "dsv4p" in s
+    assert "dsf" in s and "dsp" in s
 
 
 def test_prompt_brackets_ansi_under_readline():
@@ -344,6 +344,17 @@ def test_tty_input_continuation_line_has_no_extra_prompt():
     out = _strip_terminal_codes(_run_pty_python(code, b"prima\nseconda\r"))
     assert "❯ prima\r\n  seconda" in out
     assert "❯ prima\r\n❯ seconda" not in out
+
+
+def test_chat_banner_mentions_ctrl_j(capsys):
+    cfg = Config(api_key="k")
+    with patch("builtins.input", _inputs()):
+        chat("m", cfg)
+
+    out = capsys.readouterr().out
+    assert "Enter: send" in out
+    assert "Ctrl-J: newline" in out
+    assert "Ctrl-C: stop the reply" not in out
 
 
 def test_tty_input_delete_removes_character_at_cursor():

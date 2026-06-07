@@ -71,7 +71,7 @@ def test_load_config_with_files(tmp_path, monkeypatch):
     assert cfg.api_key == "test-key-123"
     assert cfg.aliases["mymodel"] == "custom/model-v1"
     # Default aliases still present
-    assert "ge31lite" in cfg.aliases
+    assert "gel" in cfg.aliases
 
 
 def test_load_config_env_override(tmp_path, monkeypatch):
@@ -159,10 +159,11 @@ def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
         'clo47 = "anthropic/claude-opus-4.7"\n'   # retired → dropped
         'gpt5mini = "openai/gpt-5-mini"\n'         # retired → dropped
         'o4m = "openai/o4-mini"\n'                 # retired → dropped
-        'cls46 = "anthropic/claude-sonnet-4.6"\n'  # current default → kept (as default)
+        'dsv4f = "deepseek/deepseek-v4-flash"\n'   # renamed default → dropped
+        'cls = "anthropic/claude-sonnet-4.6"\n'  # current default → kept (as default)
         'myx = "vendor/private-model"\n'           # genuine custom → kept
         "\n[shortcuts]\n"
-        'q = "qwen37"\n'
+        'q = "qwen"\n'
     )
 
     summary = sync_aliases()
@@ -172,22 +173,24 @@ def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
     aliases = parsed["aliases"]
 
     # Retired ex-defaults are gone
-    for gone in ("clo47", "gpt5mini", "o4m"):
+    for gone in ("clo47", "gpt5mini", "o4m", "dsv4f"):
         assert gone not in aliases
     # Current defaults present (including the new ones)
-    assert aliases["clo48"] == "anthropic/claude-opus-4.8"
-    assert aliases["gpt54mini"] == "openai/gpt-5.4-mini"
+    assert aliases["clo"] == "anthropic/claude-opus-4.8"
+    assert aliases["gptmini"] == "openai/gpt-5.4-mini"
+    assert aliases["dsf"] == "deepseek/deepseek-v4-flash"
     # Genuine custom preserved
     assert aliases["myx"] == "vendor/private-model"
     # The non-custom part equals the current defaults exactly
     assert {k: v for k, v in aliases.items() if k != "myx"} == DEFAULT_ALIASES
     # [api] and [shortcuts] untouched
     assert parsed["api"]["endpoint"] == "http://my-host/v1"
-    assert parsed["shortcuts"] == {"q": "qwen37"}
+    assert parsed["shortcuts"] == {"q": "qwen"}
 
     assert "clo47" in summary["removed"]
+    assert "dsv4f" in summary["removed"]
     assert "myx" in summary["kept"]
-    assert "clo48" in summary["added"]
+    assert "clo" in summary["added"]
 
 
 def test_sync_aliases_creates_when_missing(tmp_path):
@@ -202,7 +205,7 @@ def test_load_config_with_shortcuts(tmp_path, monkeypatch):
     conf = tmp_path / "conf.toml"
     conf.write_text(
         '[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n\n'
-        '[shortcuts]\ngpt = "gpt55"\ncl = "cls46"\n'
+        '[shortcuts]\ngpt = "gpt"\ncl = "cls"\n'
     )
     monkeypatch.setattr("aisk.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
@@ -210,10 +213,10 @@ def test_load_config_with_shortcuts(tmp_path, monkeypatch):
     monkeypatch.delenv("AISK_API_KEY", raising=False)
 
     cfg = load_config()
-    assert cfg.shortcuts["gpt"] == "gpt55"
-    assert cfg.shortcuts["cl"] == "cls46"
+    assert cfg.shortcuts["gpt"] == "gpt"
+    assert cfg.shortcuts["cl"] == "cls"
     # Defaults are also present
-    assert cfg.shortcuts["ds"] == "dsv4f"
+    assert cfg.shortcuts["ds"] == "dsf"
 
 
 def test_load_config_no_shortcuts_section(tmp_path, monkeypatch):
