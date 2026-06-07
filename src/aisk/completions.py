@@ -13,7 +13,7 @@ _aisk_completions() {{
 
     if [[ $COMP_CWORD -eq 1 ]] || [[ "$prev" == "-q" ]] || [[ "$prev" == "--quiet" ]] || [[ "$prev" == "-S" ]] || [[ "$prev" == "--no-stream" ]]; then
         local models="{models}"
-        local subcommands="init sync models shortcuts completions"
+        local subcommands="init sync models shortcuts completions help"
         COMPREPLY=( $(compgen -W "$models $subcommands" -- "$cur") )
     elif [[ "$cur" == -* ]]; then
         COMPREPLY=( $(compgen -W "-q --quiet -S --no-stream --version --help" -- "$cur") )
@@ -28,7 +28,7 @@ ZSH_TEMPLATE = """\
 _aisk() {{
     local -a models subcommands flags
     models=({models})
-    subcommands=(init sync models shortcuts completions)
+    subcommands=(init sync models shortcuts completions help)
     flags=(-q --quiet -S --no-stream --version --help)
 
     if (( CURRENT == 2 )) || [[ "${{words[2]}}" == "-q" ]] || [[ "${{words[2]}}" == "--quiet" ]] || [[ "${{words[2]}}" == "-S" ]] || [[ "${{words[2]}}" == "--no-stream" ]]; then

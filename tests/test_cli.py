@@ -21,7 +21,9 @@ def test_version(capsys):
     assert __version__ in capsys.readouterr().out
 
 
-def test_no_args_returns_2(capsys):
+def test_no_args_returns_2(capsys, monkeypatch):
+    """aisk with no args on a non-TTY shows help."""
+    monkeypatch.setattr("aisk.cli.sys.stdin.isatty", lambda: False)
     assert main([]) == 2
     out = capsys.readouterr().out
     assert "commands:" in out
@@ -30,6 +32,24 @@ def test_no_args_returns_2(capsys):
     assert "models        list configured model aliases" in out
     assert "completions   generate, install, or refresh shell completions" in out
     assert "aisk cls" in out
+
+
+def test_no_args_tty_enters_chat(capsys, monkeypatch):
+    """aisk with no args on a TTY launches interactive chat with default model."""
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+    monkeypatch.setattr("aisk.cli.sys.stdin.isatty", lambda: True)
+
+    called = {}
+
+    def fake_chat(model, cfg, **kw):
+        called["model"] = model
+        return 0
+
+    with patch("aisk.cli.chat", fake_chat):
+        assert main([]) == 0
+
+    # Should use the default model dsf, resolved to the full model ID
+    assert called["model"] == "deepseek/deepseek-v4-flash"
 
 
 def test_init_subcommand(capsys, tmp_path, monkeypatch):
@@ -254,3 +274,11 @@ def test_multiword_message_without_quotes(capsys, monkeypatch):
     with patch("aisk.cli.stream_chat", capture_stream):
         assert main(["gel", "what", "is", "the", "CAP", "theorem"]) == 0
     assert received["messages"] == [{"role": "user", "content": "what is the CAP theorem"}]
+
+
+def test_help_subcommand(capsys):
+    """aisk help prints the help text."""
+    assert main(["help"]) == 0
+    out = capsys.readouterr().out
+    assert "commands:" in out
+    assert "init          create ~/.aisk config" in out

@@ -951,3 +951,75 @@ Dopo M35 (`import readline`), il prompt `❯` mostrava i codici ANSI letterali (
 - [x] `chat.py`: bracketare i codici colore del prompt con `\x01`/`\x02`. Guard: se readline non è disponibile, usare il prompt semplice (i marcatori `\x01`/`\x02` apparirebbero come garbage senza readline). Esporre `_HAS_READLINE` e `_PROMPT`.
 - [x] Test: con readline disponibile `_PROMPT` contiene i bracket `\x01`/`\x02`.
 - [x] Verificare via pty che il fix preservi l'ESC.
+
+## M37: `aisk` → chat diretta + comandi in-chat (`/model`, `/help`, `/search`) ✅
+
+Rendere `aisk` senza argomenti l'entry point diretto alla chat col modello di default (`dsf`), spostando l'help attuale su `aisk help`. Aggiungere comandi interni alla chat REPL per cambiare modello, vedere l'help e attivare/disattivare la ricerca web.
+
+### A. Modello di default
+
+Aggiungere `default_model` al `Config` dataclass (`config.py`), leggibile da `conf.toml` sezione `[defaults]`:
+
+```toml
+[defaults]
+model = "dsf"
+```
+
+Se non specificato, default hardcoded = `"dsf"`. Se il valore non è un alias valido, usarlo comunque come pass-through (coerente col comportamento esistente).
+
+### B. `aisk` senza argomenti → chat
+
+In `cli.py`, quando `positional` è vuoto:
+
+- **TTY** (`sys.stdin.isatty()`) → lancia `chat()` col `default_model` (stesso flusso di `aisk <model>` senza messaggio oggi).
+- **Non-TTY** → mostra help (comportamento attuale).
+
+### C. `aisk help` — nuovo sottocomando
+
+Aggiungere `"help"` alla lista dei sottocomandi in `cli.py`. Stampa l'help di argparse ed esce.
+
+### D. Comandi in-chat
+
+Messaggi che iniziano con `/` vengono interpretati come comandi interni e **non** inviati al modello. Comandi disponibili:
+
+| Comando | Effetto |
+|---|---|
+| `/model <alias>` | Cambia modello per la sessione corrente. Valida via cache (stessa logica preflight di M31: skip se alias, check `/models` se pass-through). Mostra "Switched to `<model_id>`" e continua la chat con la history intatta. |
+| `/search` | Cicla la modalità ricerca: `auto` → `native` → `off` → `auto`. Mostra la nuova modalità attiva. |
+| `/help` | Mostra i comandi disponibili nella chat. |
+| `/xxx` (sconosciuto) | "Unknown command. Type /help for available commands." |
+
+Per mandare un messaggio che inizia con `/` al modello (non come comando), l'utente antepone uno spazio.
+
+### E. Toggle ricerca web
+
+La modalità ricerca è per-sessione (non persistita), default `auto`. Il modello riceve il tool `openrouter:web_search` e decide autonomamente quando usarlo (non cerca a ogni messaggio). Tre stati:
+
+| Modalità | `tools` inviato | Comportamento |
+|---|---|---|
+| `auto` | `[{"type": "openrouter:web_search"}]` | OpenRouter sceglie l'engine migliore (native se supportato, Exa altrimenti). Il modello decide quando cercare. |
+| `native` | `[{"type": "openrouter:web_search", "parameters": {"engine": "native"}}]` | Forza la ricerca nativa del provider. Il modello decide quando cercare. |
+| `off` | nessun `tools` | Nessuna capacità di ricerca. |
+
+Mostrata nel banner iniziale e a ogni toggle: `Search: auto | native | off`.
+
+### F. Modifiche a `client.py`
+
+Aggiungere parametro opzionale `tools: list[dict] | None = None` a `stream_chat()`. Se fornito, incluso nel payload. Questo abilita sia la ricerca web che eventuali future estensioni (tool/function calling).
+
+### Task
+
+- [x] `config.py`: `Config.default_model: str = "dsf"`, parsing da `[defaults].model` in `conf.toml`.
+- [x] `config.py`: `_render_default_conf` — aggiungere sezione `[defaults]` al template con `model = "dsf"`.
+- [x] `cli.py`: dispatch `aisk` senza args → TTY: chat(default_model); non-TTY: help.
+- [x] `cli.py`: sottocomando `help` → stampa help argparse.
+- [x] `cli.py`: aggiornare `usage=` con `help` e nuovo comportamento default.
+- [x] `chat.py`: `chat()` accetta ora anche `default_model` (per il banner) e `aliases` (per `/model`).
+- [x] `chat.py`: loop principale — se l'input inizia con `/`, parsare il comando; altrimenti inviare al modello.
+- [x] `chat.py`: implementare `/model`, `/help`, `/search`.
+- [x] `chat.py`: banner mostra modello + stato ricerca (es. `Model: dsf (deepseek/deepseek-v4-flash) · Search: auto`).
+- [x] `chat.py`: `/search` toggle cicla e aggiorna lo stato; `stream_chat` riceve `tools` in base allo stato attuale.
+- [x] `client.py`: `stream_chat(..., tools=None)` → aggiunto al payload se non-None.
+- [x] `completions.py`: aggiungere `help` ai subcommand completabili (bash + zsh).
+- [x] Test: `aisk` senza args TTY → chat; non-TTY → help. `aisk help` → help. `/model` in chat valida e switcha. `/search` cicla correttamente. `stream_chat` con tools. Config `default_model` custom.
+- [x] README: aggiornare sezione Usage con il nuovo comportamento default + comandi chat. Rimpiazzare gli esempi `aisk` a vuoto che mostrano help con `aisk help`.
