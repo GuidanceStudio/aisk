@@ -3,21 +3,21 @@
 A fast, minimal CLI to ask questions to any LLM from your terminal.
 
 ```bash
-aisk ge31lite "explain monads in Haskell"
+aisk gel "explain monads in Haskell"
 ```
 
 ## Features
 
 - **Streaming responses** — tokens appear as they arrive
-- **Interactive chat** — `aisk cls46` with no message opens a multi-turn REPL
+- **Interactive chat** — `aisk cls` with no message opens a multi-turn REPL
 - **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
 - **Prompt caching** — on by default; cuts cost on long chats/resumes (`AISK_PROMPT_CACHE=0` to disable)
 - **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
-- **Model aliases** — short names for long model IDs (`ge31lite` → `google/gemini-3.1-flash-lite-preview`)
+- **Model aliases** — short names for long model IDs (`gel` → `google/gemini-3.1-flash-lite-preview`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
 - **Buffered mode** — `-S` prints the full response at the end instead of streaming
-- **Stdin support** — `echo "explain this" | aisk cls46`
+- **Stdin support** — `echo "explain this" | aisk cls`
 - **Any OpenAI-compatible endpoint** — OpenRouter by default, override with one setting
 - **Zero config** — just set your API key and go
 
@@ -48,7 +48,7 @@ uv tool install .
 No explicit setup needed. On first run, `aisk` detects the missing configuration and launches the setup wizard automatically:
 
 ```bash
-aisk ge31lite "hello world"
+aisk gel "hello world"
 # → First run detected — launching setup wizard...
 # → Asks for endpoint and API key, then runs your query
 ```
@@ -73,7 +73,7 @@ defaults — your endpoint, shortcuts and any custom aliases are kept:
 
 ```bash
 aisk sync
-# + added:   clo48, gpt54mini, …
+# + added:   clo, gptmini, …
 # - removed: clo47, gpt5mini, o4m, …
 # = kept custom: myalias
 
@@ -96,8 +96,8 @@ AISK_API_KEY=sk-or-...
 endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
 [aliases]
-ge31lite = "google/gemini-3.1-flash-lite-preview"
-cls46 = "anthropic/claude-sonnet-4.6"
+gel = "google/gemini-3.1-flash-lite-preview"
+cls = "anthropic/claude-sonnet-4.6"
 # ... add your own
 ```
 
@@ -133,41 +133,41 @@ the model is named natively (e.g. `gpt-5.5`), so use the pass-through form
 
 ```bash
 # Ask a question (verbose mode, default)
-aisk ge31lite "what is the CAP theorem?"
+aisk gel "what is the CAP theorem?"
 
 # Interactive chat — no message starts a multi-turn REPL.
 # ←/→ move in the prompt; ↑/↓ move within multi-line input or recall previous prompts.
 # Ctrl-J inserts a newline (Ctrl+Enter/Shift+Enter also work when supported).
 # Ctrl-C stops the current reply (or exits at the prompt); Ctrl-D exits.
 # Each reply shows its cost and the running conversation total.
-# A mistyped model is caught up front (e.g. `aisk dsv4` → "did you mean dsv4f?").
-aisk cls46
+# A mistyped model is caught up front (e.g. `aisk dsv4` → "did you mean dsf?").
+aisk cls
 
 # Resume the last conversation — continue in chat, or one-shot with a message
-aisk dsv4f "explain monads"
+aisk dsf "explain monads"
 aisk --resume                  # reopens it as a chat, history preloaded
 aisk --resume "give an example"  # one-shot follow-up
 
 # No quotes needed — all words after the model are joined automatically
-aisk ge31lite what is the CAP theorem
+aisk gel what is the CAP theorem
 
 # Use quotes if your message contains shell special characters: () ! > | &
-aisk glm51 "what is f(x) = x^2 + (x-1)?"
+aisk glm "what is f(x) = x^2 + (x-1)?"
 
 # Use single quotes for backticks
-aisk ge31lite 'explain the `ls -la` command'
+aisk gel 'explain the `ls -la` command'
 
 # Quiet mode — only the LLM response, no decoration
-aisk -q cls46 "translate to English: buongiorno"
+aisk -q cls "translate to English: buongiorno"
 
 # Buffered mode — print full response at the end (no progressive streaming)
-aisk -S ge31lite "explain monads"
+aisk -S gel "explain monads"
 
 # Combine: quiet + buffered — ideal for scripts
-aisk -q -S cls46 "translate to English: buongiorno" | wc -w
+aisk -q -S cls "translate to English: buongiorno" | wc -w
 
 # Pipe from stdin
-echo "summarize this" | aisk gpt54mini
+echo "summarize this" | aisk gptmini
 
 # Search with Perplexity
 aisk s what is the mass of the sun
@@ -214,14 +214,14 @@ Define short shell functions that call `aisk` with a specific model. Configure t
 
 ```toml
 [shortcuts]
-ds = "dsv4f"
+ds = "dsf"
 news = "sps"
-# gpt = "gpt55"
-# cl = "cls46"
-# ge = "ge35flash"
+# gp = "gptpro"
+# cl = "cls"
+# ge = "gef"
 ```
 
-Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsv4f "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
+Each shortcut becomes a shell function (e.g. `ds "question"` → `aisk dsf "question"`), loaded automatically via `eval "$(aisk completions bash)"`.
 
 ```bash
 # See generated functions

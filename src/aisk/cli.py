@@ -34,9 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
             "  completions   generate, install, or refresh shell completions\n"
             "\n"
             "examples:\n"
-            "  aisk cls46                 start interactive chat\n"
-            "  aisk ge31lite \"hello\"      ask one question\n"
-            "  aisk --resume              reopen the last conversation\n"
+            "  aisk cls              start interactive chat\n"
+            "  aisk gel \"hello\"      ask one question\n"
+            "  aisk --resume         reopen the last conversation\n"
         ),
     )
     parser.add_argument(
