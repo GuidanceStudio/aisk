@@ -1,8 +1,28 @@
+import os
+import re
+import select
+import subprocess
+import sys
+import time
 from unittest.mock import patch
 
-from aisk.chat import _render_turn, _suggest, chat
+import pytest
+
+from aisk.chat import (
+    _display_width,
+    _input_visual_lines,
+    _render_turn,
+    _suggest,
+    _terminal_columns,
+    chat,
+)
 from aisk.client import ContentChunk, ErrorInfo, UsageInfo
 from aisk.config import DEFAULT_ALIASES, Config
+
+try:
+    import pty
+except ImportError:  # pragma: no cover - non-POSIX
+    pty = None
 
 
 def _events(*evs):
@@ -20,6 +40,55 @@ def _inputs(*values):
             raise EOFError
 
     return fake_input
+
+
+def _run_pty_python(code: str, payload: bytes) -> str:
+    if pty is None:
+        pytest.skip("pty is not available")
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(
+        [os.path.abspath("src"), env.get("PYTHONPATH", "")]
+    )
+
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        [sys.executable, "-c", code],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+        close_fds=True,
+    )
+    os.close(slave)
+    out = b""
+
+    try:
+        deadline = time.time() + 2
+        while time.time() < deadline and b"\xe2\x9d\xaf" not in out:
+            ready, _, _ = select.select([master], [], [], 0.05)
+            if ready:
+                out += os.read(master, 4096)
+
+        os.write(master, payload)
+
+        deadline = time.time() + 2
+        while time.time() < deadline and b"GOT:" not in out:
+            ready, _, _ = select.select([master], [], [], 0.05)
+            if ready:
+                out += os.read(master, 4096)
+
+        proc.wait(timeout=2)
+    finally:
+        if proc.poll() is None:
+            proc.terminate()
+        os.close(master)
+
+    return out.decode("utf-8", "replace")
+
+
+def _strip_terminal_codes(text: str) -> str:
+    return re.sub(r"\x1b\[[0-9;?]*[A-Za-z~]", "", text)
 
 
 def test_render_turn_collects_content(capsys):
@@ -147,6 +216,176 @@ def test_prompt_brackets_ansi_under_readline():
     import aisk.chat as c
     if c._HAS_READLINE:
         assert "\x01" in c._PROMPT and "\x02" in c._PROMPT
+
+
+def test_configure_readline_enables_bracketed_paste():
+    import aisk.chat as c
+
+    calls = []
+
+    class FakeReadline:
+        __doc__ = "GNU readline"
+
+        @staticmethod
+        def parse_and_bind(command):
+            calls.append(command)
+
+    assert c._configure_readline(FakeReadline) is True
+    assert calls == ["set enable-bracketed-paste on"]
+
+
+def test_configure_readline_ignores_unsupported_binding():
+    import aisk.chat as c
+
+    class FakeReadline:
+        @staticmethod
+        def parse_and_bind(command):
+            raise ValueError("unsupported")
+
+    assert c._configure_readline(FakeReadline) is False
+
+
+def test_tty_input_bracketed_paste_keeps_multiline_prompt():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"\x1b[200~prima riga\nseconda riga\x1b[201~\r")
+    assert "GOT:'prima riga\\nseconda riga'" in out
+
+
+def test_tty_input_arrow_up_recalls_prompt_history():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input(['vecchio prompt'])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"\x1b[A\r")
+    assert "GOT:'vecchio prompt'" in out
+
+
+def test_tty_input_preserves_utf8_text():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, "caffè 界\r".encode())
+    assert "GOT:'caffè 界'" in out
+
+
+def test_tty_input_left_right_insert_in_middle():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"ac\x1b[Db\r")
+    assert "GOT:'abc'" in out
+
+
+def test_tty_input_up_down_moves_within_multiline_prompt():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"\x1b[200~abcd\nefgh\x1b[201~\x1b[A\x1b[DX\r")
+    assert "GOT:'abcXd\\nefgh'" in out
+
+
+def test_tty_input_csi_1_up_variant_moves_within_multiline_prompt():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"\x1b[200~abcd\nefgh\x1b[201~\x1b[1A!\r")
+    assert "GOT:'abcd!\\nefgh'" in out
+
+
+def test_tty_input_down_moves_within_multiline_prompt():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"\x1b[200~abcd\nefgh\x1b[201~\x1b[A\x1b[BX\r")
+    assert "GOT:'abcd\\nefghX'" in out
+
+
+def test_tty_input_ctrl_enter_inserts_newline():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"prima\x1b[13;5useconda\r")
+    assert "GOT:'prima\\nseconda'" in out
+
+
+def test_tty_input_ctrl_j_inserts_newline():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"prima\nseconda\r")
+    assert "GOT:'prima\\nseconda'" in out
+
+
+def test_tty_input_continuation_line_has_no_extra_prompt():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _strip_terminal_codes(_run_pty_python(code, b"prima\nseconda\r"))
+    assert "❯ prima\r\n  seconda" in out
+    assert "❯ prima\r\n❯ seconda" not in out
+
+
+def test_tty_input_delete_removes_character_at_cursor():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"abcd\x1b[D\x1b[D\x1b[3~\r")
+    assert "GOT:'abd'" in out
+
+
+def test_tty_input_ctrl_d_removes_character_at_cursor():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    out = _run_pty_python(code, b"abcd\x1b[D\x1b[D\x04\r")
+    assert "GOT:'abd'" in out
+
+
+def test_input_visual_lines_counts_terminal_wraps():
+    assert _input_visual_lines("12345678", columns=10) == 1
+    assert _input_visual_lines("123456789", columns=10) == 2
+    assert _input_visual_lines("123456789\nabc", columns=10) == 3
+
+
+def test_display_width_ignores_combining_marks_and_counts_wide_chars():
+    assert _display_width("e\u0301") == 1
+    assert _display_width("界") == 2
+
+
+def test_terminal_columns_falls_back_when_tty_reports_zero(monkeypatch):
+    import aisk.chat as c
+
+    monkeypatch.setattr(
+        c.os,
+        "get_terminal_size",
+        lambda fd: os.terminal_size((0, 0)),
+    )
+    assert _terminal_columns() == 80
 
 
 def test_chat_blank_input_skipped():

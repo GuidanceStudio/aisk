@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +18,7 @@ CONFIG_FILE = CONFIG_DIR / "conf.toml"
 ENV_FILE = CONFIG_DIR / ".env"
 
 DEFAULT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+_ANSI_SGR_RE = re.compile(r"\033\[[0-9;]*m")
 
 # Single source of truth for the default model aliases, grouped by provider.
 # Both DEFAULT_ALIASES (the dict) and DEFAULT_CONF_TOML (the template written by
@@ -304,6 +306,13 @@ def _write_conf(endpoint: str) -> None:
     CONFIG_FILE.write_text(_render_default_conf(endpoint))
 
 
+def _readline_safe_prompt(prompt: str) -> str:
+    """Protect ANSI escape sequences in input() prompts when readline is loaded."""
+    if "readline" not in sys.modules:
+        return prompt
+    return _ANSI_SGR_RE.sub(lambda match: f"\x01{match.group(0)}\x02", prompt)
+
+
 def interactive_init(
     input_fn=None,
     print_fn=None,
@@ -319,7 +328,7 @@ def interactive_init(
               and only ask for what's missing.
     """
     if input_fn is None:
-        input_fn = input
+        input_fn = lambda prompt="": input(_readline_safe_prompt(prompt))
     if print_fn is None:
         print_fn = print
 
