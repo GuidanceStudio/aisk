@@ -1181,14 +1181,16 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Approach:** Aggiungere una GitHub Actions matrix su Ubuntu e Windows usando `uv`, con pytest completo dove possibile. I test pty POSIX devono restare skip automatici su Windows; i test PowerShell devono girare solo quando `pwsh` esiste. Questo milestone non cambia feature utente, ma rende verificabile il supporto appena introdotto.
 
 **Tasks:**
-- [ ] Creare workflow CI con Python supportato dal progetto e `uv`.
-- [ ] Eseguire pytest su Ubuntu e Windows.
-- [ ] Marcare o adattare i test POSIX-only perché saltino in modo esplicito su Windows.
-- [ ] Aggiungere un check dedicato per `install.ps1` quando `pwsh` è disponibile.
-- [ ] Documentare nel README/badge o nella sezione contributor il comando locale equivalente.
-- [ ] Commit & push.
+- [x] Creare workflow CI con Python supportato dal progetto e `uv`.
+- [x] Eseguire pytest su Ubuntu e Windows.
+- [x] Marcare o adattare i test POSIX-only perché saltino in modo esplicito su Windows.
+- [x] Aggiungere un check dedicato per `install.ps1` quando `pwsh` è disponibile.
+- [x] Documentare nel README/badge o nella sezione contributor il comando locale equivalente.
+- [x] Commit & push.
 
 **Done when:** La CI esegue la suite su Windows e Ubuntu, con skip intenzionali solo per funzionalità POSIX non ancora migrate.
+
+**Execution notes:** Aggiunto `.github/workflows/ci.yml` con matrix `ubuntu-latest`/`windows-latest`, Python 3.12, `astral-sh/setup-uv@v8`, `uv run pytest -q` e smoke Windows dedicato via `pwsh` su `tests/test_install.py` dopo `Test-Path .\install.ps1`. I test pty sono già guarded da import `pty` e saltano sulle piattaforme senza pty. README documenta il comando locale equivalente. Test locali: `uv run pytest -q` → `217 passed, 2 skipped`.
 
 ## M45: Migrare il prompt chat a `prompt_toolkit`
 
