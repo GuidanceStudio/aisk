@@ -65,8 +65,8 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 Windows support includes install, setup, `models`, one-shot prompts, `--resume`,
 and interactive chat. The chat prompt uses `prompt_toolkit` for cross-platform
-multiline input, history, `Ctrl+S` search toggle, and `Ctrl+G` help. The model
-selector (`Ctrl+O`) is still Unix-only until the selector migration is complete.
+multiline input, history, `Ctrl+S` search toggle, `Ctrl+O` model selector, and
+`Ctrl+G` help.
 
 ## Setup
 
