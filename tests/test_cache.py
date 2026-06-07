@@ -98,3 +98,13 @@ def test_check_model_writes_cache():
         cache.check_model(ENDPOINT, "k", "a/b", now=now)
     cached, fresh = cache._read(ENDPOINT, now)
     assert cached == {"a/b"} and fresh
+
+
+def test_cache_write_succeeds_when_chmod_unavailable():
+    now = 3000.0
+    with patch("os.chmod", side_effect=NotImplementedError):
+        cache._write(ENDPOINT, {"a/b"}, now)
+
+    cached, fresh = cache._read(ENDPOINT, now)
+    assert cached == {"a/b"}
+    assert fresh is True

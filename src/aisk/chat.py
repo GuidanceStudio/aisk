@@ -759,7 +759,7 @@ def _validate_model(model: str, cfg: Config, model_input: str | None) -> int | N
 
 _SEARCH_MODES = ["auto", "native", "off"]
 _SHORTCUT_HELP = """\
-  Ctrl+S          toggle web search: auto → native → off → auto
+  Ctrl+S          toggle web search: off → auto → native → off
   Ctrl+O          select model (fuzzy menu with arrow keys)
   Ctrl+G          show this help
   Enter           send message
@@ -785,7 +785,7 @@ def chat(
     """Run an interactive multi-turn chat REPL. Returns an exit code.
 
     Keyboard shortcuts (raw-TTY mode):
-      Ctrl+S  toggle web search: auto → native → off → auto
+      Ctrl+S  toggle web search: off → auto → native → off
       Ctrl+O  select model (fuzzy menu with arrow keys)
       Ctrl+G  show help
       Enter   send message
@@ -796,7 +796,7 @@ def chat(
     if rc is not None:
         return rc
 
-    search_mode = "auto"
+    search_mode = "off"
 
     sys.stdout.write(_CLEAR_SCREEN)
     _write(f"{_BLUE}{_BAR}{_RESET}\n")

@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from aisk import config
+from aisk.permissions import chmod_private
 
 SESSION_TTL = 7 * 24 * 3600  # seconds
 
@@ -41,16 +42,10 @@ def save_session(
     d = _sessions_dir()
     d.mkdir(parents=True, exist_ok=True)
     # Conversations are stored in plain text — keep the directory owner-only.
-    try:
-        os.chmod(d, 0o700)
-    except OSError:
-        pass
+    chmod_private(d, 0o700)
     path = _session_file(key or _key())
     path.write_text(json.dumps({"model": model, "messages": messages, "updated_at": now}))
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass
+    chmod_private(path, 0o600)
     _prune(now)
 
 

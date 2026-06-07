@@ -262,6 +262,47 @@ def test_resume_interactive_preloads_history(monkeypatch):
     assert called["history"] == hist
 
 
+def test_models_oneshot_and_resume_with_windows_user_path(capsys, monkeypatch, tmp_path):
+    from aisk import session
+
+    cfg_dir = tmp_path / "Users" / "Test User" / ".aisk"
+    cfg_dir.mkdir(parents=True)
+    conf = cfg_dir / "conf.toml"
+    env_file = cfg_dir / ".env"
+    conf.write_text(
+        '[api]\nendpoint = "https://openrouter.ai/api/v1/chat/completions"\n\n'
+        '[aliases]\nwin = "vendor/model"\n'
+    )
+    env_file.write_text("AISK_API_KEY=test-key\n")
+    monkeypatch.setattr("aisk.config.CONFIG_DIR", cfg_dir)
+    monkeypatch.setattr("aisk.config.CONFIG_FILE", conf)
+    monkeypatch.setattr("aisk.config.ENV_FILE", env_file)
+    monkeypatch.setenv("AISK_API_KEY", "test-key")
+
+    assert main(["models"]) == 0
+    assert "win" in capsys.readouterr().out
+
+    with patch("aisk.cli.stream_chat", _mock_stream(ContentChunk("first"))):
+        assert main(["win", "hello"]) == 0
+
+    saved = session.load_session()
+    assert saved["model"] == "vendor/model"
+    assert saved["messages"][-1] == {"role": "assistant", "content": "first"}
+
+    received = {}
+
+    def capture(endpoint, api_key, model, messages, **kw):
+        received["model"] = model
+        received["messages"] = [m.copy() for m in messages]
+        yield ContentChunk("second")
+
+    with patch("aisk.cli.stream_chat", capture):
+        assert main(["--resume", "again"]) == 0
+
+    assert received["model"] == "vendor/model"
+    assert received["messages"][-1] == {"role": "user", "content": "again"}
+
+
 def test_multiword_message_without_quotes(capsys, monkeypatch):
     """aisk gel what is the CAP theorem — joins all words after model."""
     monkeypatch.setenv("AISK_API_KEY", "test-key")

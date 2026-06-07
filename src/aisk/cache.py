@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
 from aisk import config
 from aisk.client import list_models
+from aisk.permissions import chmod_private
 
 CACHE_TTL = 24 * 3600  # seconds
 
@@ -41,10 +41,7 @@ def _write(endpoint: str, models: set[str], now: float) -> None:
     p = _cache_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(data))
-    try:
-        os.chmod(p, 0o600)
-    except OSError:
-        pass
+    chmod_private(p, 0o600)
 
 
 def check_model(
