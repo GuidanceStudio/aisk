@@ -104,6 +104,42 @@ def _terminal_columns() -> int:
     return columns if columns > 0 else 80
 
 
+def _terminal_rows() -> int:
+    try:
+        rows = os.get_terminal_size(sys.stdout.fileno()).lines
+    except OSError:
+        return 24
+    return rows if rows > 0 else 24
+
+
+def _repaint_footer() -> None:
+    """Draw the shortcut bar at the very bottom of the terminal."""
+    rows = _terminal_rows()
+    sys.stdout.write("\x1b[s")
+    sys.stdout.write(f"\x1b[{rows};1H")
+    sys.stdout.write(f"\x1b[2K{_DIM}Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}")
+    sys.stdout.write("\x1b[u")
+    sys.stdout.flush()
+
+
+def _draw_header(model: str, search_mode: str) -> None:
+    """Draw the aisk chat header."""
+    _write(f"\r\n{_BLUE}{_BAR}{_RESET}")
+    _write(f"\r\n  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}")
+    _write(f"\r\n{_BLUE}{_BAR}{_RESET}\r\n")
+
+
+def _refresh_header(model: str, search_mode: str) -> None:
+    """Update the header line without clearing the screen."""
+    sys.stdout.write("\x1b[s")
+    sys.stdout.write("\x1b[H")
+    sys.stdout.write(f"\x1b[2K{_BLUE}{_BAR}{_RESET}")
+    sys.stdout.write(f"\r\n\x1b[2K  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}")
+    sys.stdout.write(f"\r\n\x1b[2K{_BLUE}{_BAR}{_RESET}")
+    sys.stdout.write("\x1b[u")
+    sys.stdout.flush()
+
+
 def _wrapped_rows(line: str, columns: int, start_column: int = 0) -> int:
     first_width = max(1, columns - start_column)
     width = _display_width(line, start_column=start_column)
@@ -233,6 +269,7 @@ def _read_tty_input(
 
     def redraw() -> None:
         nonlocal rendered_cursor_row
+        _repaint_footer()
         if rendered_cursor_row > 0:
             sys.stdout.write("\r" + "\x1b[1A\r" * rendered_cursor_row)
         else:
@@ -803,10 +840,8 @@ def chat(
 
     search_mode = "auto"
 
-    _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
-    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
-    _write(f"  {_DIM}Search: {search_mode}  ·  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}\n")
-    _write(f"{_BLUE}{_BAR}{_RESET}\n")
+    _draw_header(model, search_mode)
+    _repaint_footer()
 
     messages: list[dict] = list(history) if history else []
     prompt_history: list[str] = []
@@ -817,6 +852,8 @@ def chat(
         nonlocal search_mode
         idx = _SEARCH_MODES.index(search_mode)
         search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
+        _refresh_header(model, search_mode)
+        _repaint_footer()
         _write(f"\r\n  {_DIM}Search: {search_mode}{_RESET}\r\n")
 
     def _select_model() -> str | None:
@@ -827,6 +864,8 @@ def chat(
         new_model = _handle_model_switch(selected, cfg)
         if new_model is not None:
             model = new_model
+            _refresh_header(model, search_mode)
+            _repaint_footer()
         return new_model
 
     def _show_help() -> None:
@@ -834,6 +873,7 @@ def chat(
         for line in _SHORTCUT_HELP:
             _write(f"  {_DIM}{line}{_RESET}\r\n")
         _write("\r\n")
+        _repaint_footer()
 
     while True:
         try:
@@ -879,6 +919,7 @@ def chat(
 
         if usage:
             _write(f"{_DIM}{_format_usage(usage, totals)}{_RESET}\n")
+            _repaint_footer()
 
     return 0
 
