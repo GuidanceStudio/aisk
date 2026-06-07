@@ -25,9 +25,18 @@ aisk gel "explain monads in Haskell"
 
 ## Install
 
+macOS/Linux:
+
 ```bash
 # One-liner (installs uv if needed, upgrades if already installed)
 curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+# One-liner (installs uv if needed, upgrades if already installed)
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.ps1 | iex"
 ```
 
 Or manually:
@@ -43,6 +52,13 @@ cd aisk
 
 # Minimal local install without setup/completions
 uv tool install .
+```
+
+```powershell
+# Windows PowerShell from local clone
+git clone https://github.com/GuidanceStudio/aisk.git
+cd aisk
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ## Setup
