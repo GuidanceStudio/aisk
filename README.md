@@ -305,6 +305,20 @@ Minimal by design:
 - `python-dotenv` — loads `.env`
 - `tomli` — TOML parser (Python <3.11 only; 3.11+ uses stdlib `tomllib`)
 
+## Development
+
+The CI runs the pytest suite on Ubuntu and Windows with `uv`:
+
+```bash
+uv run pytest -q
+```
+
+On Windows, the workflow also runs a focused PowerShell installer smoke test:
+
+```powershell
+uv run pytest -q tests/test_install.py
+```
+
 ## License
 
 MIT
