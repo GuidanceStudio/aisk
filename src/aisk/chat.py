@@ -535,6 +535,10 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
 
     Returns the selected model ID (from aliases) or a pass-through string,
     or None if cancelled.
+
+    Arrow keys move the selection (with wrap-around) using incremental
+    cursor updates — no full repaint on navigation.  Typing a filter
+    triggers a full redraw of the item list.
     """
     fd = sys.stdin.fileno()
     old_attrs = termios.tcgetattr(fd)
@@ -545,42 +549,79 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
         filter_text = ""
         selected_idx = 0
         filtered = items[:]
-        rendered_lines = 0
+        rendered_items = 0
+        max_alias_len = max((len(a) for a, _ in items), default=8)
 
-        def redraw() -> None:
-            nonlocal selected_idx, rendered_lines
+        def _bar() -> str:
+            return "─" * max(10, _terminal_columns() - 12)
 
-            if selected_idx >= len(filtered):
-                selected_idx = max(0, len(filtered) - 1)
-
+        def draw_overlay() -> None:
+            nonlocal rendered_items
+            bar = _bar()
             lines: list[str] = []
-            columns = _terminal_columns()
-            bar_len = max(10, columns - 12)
-            bar = "─" * bar_len
             lines.append(f"\r\x1b[J{_DIM}Model {bar}{_RESET}")
 
-            max_alias = max((len(a) for a, _ in items), default=8)
             for i, (alias, model_id) in enumerate(filtered):
                 prefix = f"{_CYAN}>" if i == selected_idx else " "
-                alias_padded = f"{alias:<{max_alias}}"
+                alias_padded = f"{alias:<{max_alias_len}}"
                 lines.append(f"\r  {prefix} {alias_padded}  {_DIM}{model_id}{_RESET}")
 
             if not filtered and filter_text:
                 lines.append(f"\r  {_DIM}(no matches — Enter to use as pass-through){_RESET}")
 
+            rendered_items = len(filtered) if filtered else (1 if filter_text else 0)
+
             lines.append(f"\r{_DIM}{bar}{_RESET}")
             lines.append(f"\rFilter: {filter_text}")
+            lines.append(f"\r{_DIM}↑↓ navigate  ·  Enter select  ·  Esc cancel  ·  Type to filter{_RESET}")
 
             sys.stdout.write("\r\n".join(lines))
             sys.stdout.flush()
-            rendered_lines = len(lines)
+
+        def _filter_line_num() -> int:
+            return 1 + rendered_items + 1  # header + items + bar → filter line
+
+        def _move_marker(old_idx: int, new_idx: int) -> None:
+            if old_idx == new_idx or not filtered:
+                return
+
+            alias_old, model_old = filtered[old_idx]
+            alias_new, model_new = filtered[new_idx]
+            alias_padded_old = f"{alias_old:<{max_alias_len}}"
+            alias_padded_new = f"{alias_new:<{max_alias_len}}"
+
+            fl = _filter_line_num()
+
+            # Move up from filter line to old selection line, clear >
+            up = fl - (1 + old_idx)
+            if up > 0:
+                sys.stdout.write(f"\x1b[{up}A")
+            sys.stdout.write(f"\r    {alias_padded_old}  {_DIM}{model_old}{_RESET}")
+
+            # Move to new selection line, draw >
+            diff = new_idx - old_idx
+            if diff > 0:
+                sys.stdout.write(f"\x1b[{diff}B")
+            elif diff < 0:
+                sys.stdout.write(f"\x1b[{-diff}A")
+            sys.stdout.write(f"\r  {_CYAN}> {alias_padded_new}  {_DIM}{model_new}{_RESET}")
+
+            # Return cursor to filter line
+            down = fl - (1 + new_idx)
+            if down > 0:
+                sys.stdout.write(f"\x1b[{down}B")
+            sys.stdout.write("\r")
+            sys.stdout.flush()
 
         def apply_filter() -> None:
             nonlocal filtered, selected_idx
             filtered = _filter_items(filter_text, aliases) if filter_text else items[:]
-            selected_idx = 0
+            if filtered:
+                selected_idx = selected_idx % len(filtered)
+            else:
+                selected_idx = 0
 
-        redraw()
+        draw_overlay()
 
         pending = b""
         while True:
@@ -603,15 +644,17 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
                         pass
                 if pending.startswith(b"[A") or pending.startswith(b"OA"):
                     pending = pending[pending.index(b"A") + 1:]
-                    if selected_idx > 0:
-                        selected_idx -= 1
-                        redraw()
+                    if filtered:
+                        old = selected_idx
+                        selected_idx = (selected_idx - 1) % len(filtered)
+                        _move_marker(old, selected_idx)
                     continue
                 if pending.startswith(b"[B") or pending.startswith(b"OB"):
                     pending = pending[pending.index(b"B") + 1:]
-                    if selected_idx < len(filtered) - 1:
-                        selected_idx += 1
-                        redraw()
+                    if filtered:
+                        old = selected_idx
+                        selected_idx = (selected_idx + 1) % len(filtered)
+                        _move_marker(old, selected_idx)
                     continue
                 sys.stdout.write("\r\n")
                 return None
@@ -627,7 +670,7 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
                 if filter_text:
                     filter_text = filter_text[:-1]
                     apply_filter()
-                    redraw()
+                    draw_overlay()
                 continue
             if byte >= b" ":
                 try:
@@ -635,12 +678,12 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
                 except UnicodeDecodeError:
                     filter_text += byte.decode("utf-8", "replace")
                 apply_filter()
-                redraw()
+                draw_overlay()
     finally:
-        sys.stdout.write("\r")
-        for _ in range(rendered_lines):
+        total = rendered_items + 4  # header + items + bar + filter + shortcuts
+        for _ in range(total):
             sys.stdout.write("\x1b[2K")
-            if _ < rendered_lines - 1:
+            if _ < total - 1:
                 sys.stdout.write("\x1b[1A")
         sys.stdout.write("\r")
         sys.stdout.flush()
