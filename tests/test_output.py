@@ -38,6 +38,22 @@ def test_verbose_with_reasoning(capsys):
     assert "Reasoning: 10" in out
 
 
+def test_verbose_does_not_show_late_reasoning_after_answer(capsys):
+    events = _events(
+        ContentChunk("answer"),
+        ReasoningChunk("late thinking"),
+        UsageInfo(prompt_tokens=5, completion_tokens=2, reasoning_tokens=10),
+    )
+    rc = render_verbose("test/model", "q", events)
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "ANSWER" in out
+    assert "answer" in out
+    assert "late thinking" not in out
+    assert "THINKING" not in out
+    assert "Reasoning: 10" in out
+
+
 def test_verbose_with_cost(capsys):
     events = _events(
         ContentChunk("ok"),

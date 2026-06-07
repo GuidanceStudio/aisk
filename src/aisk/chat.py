@@ -27,10 +27,7 @@ except ImportError:  # not in the stdlib on some platforms (e.g. Windows)
 from aisk import cache, session
 from aisk.aliases import resolve_model
 from aisk.client import (
-    ContentChunk,
-    ErrorInfo,
     Event,
-    ReasoningChunk,
     UsageInfo,
     stream_chat,
 )
@@ -39,13 +36,14 @@ from aisk.output import (
     _BLUE,
     _CYAN,
     _DIM,
-    _DIM_ITALIC,
     _RED,
     _RESET,
+    render_verbose_stream,
     _write,
 )
 
 _BAR = "─" * 60
+_CLEAR_SCREEN = "\x1b[2J\x1b[H"
 _BRACKETED_PASTE_ON = "\x1b[?2004h"
 _BRACKETED_PASTE_OFF = "\x1b[?2004l"
 _BRACKETED_PASTE_START = b"\x1b[200~"
@@ -558,6 +556,7 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
     fd = sys.stdin.fileno()
     old_attrs = termios.tcgetattr(fd)
     tty.setraw(fd)
+    cursor_row = 0
 
     try:
         items = sorted(aliases.items())
@@ -570,31 +569,50 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
         def _bar() -> str:
             return "─" * max(10, _terminal_columns() - 12)
 
+        def _filter_line_num() -> int:
+            return 1 + rendered_items + 1  # header + items + bar → filter line
+
+        def _move_to_row(row: int) -> None:
+            nonlocal cursor_row
+            delta = row - cursor_row
+            if delta > 0:
+                sys.stdout.write(f"\x1b[{delta}B")
+            elif delta < 0:
+                sys.stdout.write(f"\x1b[{-delta}A")
+            sys.stdout.write("\r")
+            cursor_row = row
+
+        def _move_to_filter() -> None:
+            _move_to_row(_filter_line_num())
+            column = _display_width(f"Filter: {filter_text}")
+            if column:
+                sys.stdout.write(f"\x1b[{column}C")
+
         def draw_overlay() -> None:
-            nonlocal rendered_items
+            nonlocal rendered_items, cursor_row
             bar = _bar()
             lines: list[str] = []
-            lines.append(f"\r\x1b[J{_DIM}Model {bar}{_RESET}")
+            _move_to_row(0)
+            lines.append(f"{_DIM}Model {bar}{_RESET}")
 
             for i, (alias, model_id) in enumerate(filtered):
                 prefix = f"{_CYAN}>" if i == selected_idx else " "
                 alias_padded = f"{alias:<{max_alias_len}}"
-                lines.append(f"\r  {prefix} {alias_padded}  {_DIM}{model_id}{_RESET}")
+                lines.append(f"  {prefix} {alias_padded}  {_DIM}{model_id}{_RESET}")
 
             if not filtered and filter_text:
-                lines.append(f"\r  {_DIM}(no matches — Enter to use as pass-through){_RESET}")
+                lines.append(f"  {_DIM}(no matches — Enter to use as pass-through){_RESET}")
 
             rendered_items = len(filtered) if filtered else (1 if filter_text else 0)
 
-            lines.append(f"\r{_DIM}{bar}{_RESET}")
-            lines.append(f"\rFilter: {filter_text}")
-            lines.append(f"\r{_DIM}↑↓ navigate  ·  Enter select  ·  Esc cancel  ·  Type to filter{_RESET}")
+            lines.append(f"{_DIM}{bar}{_RESET}")
+            lines.append(f"Filter: {filter_text}")
+            lines.append(f"{_DIM}↑↓ navigate  ·  Enter select  ·  Esc cancel  ·  Type to filter{_RESET}")
 
-            sys.stdout.write("\r\n".join(lines))
+            sys.stdout.write("\x1b[J" + "\r\n".join(lines))
+            cursor_row = len(lines) - 1
+            _move_to_filter()
             sys.stdout.flush()
-
-        def _filter_line_num() -> int:
-            return 1 + rendered_items + 1  # header + items + bar → filter line
 
         def _move_marker(old_idx: int, new_idx: int) -> None:
             if old_idx == new_idx or not filtered:
@@ -605,27 +623,13 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
             alias_padded_old = f"{alias_old:<{max_alias_len}}"
             alias_padded_new = f"{alias_new:<{max_alias_len}}"
 
-            fl = _filter_line_num()
+            _move_to_row(1 + old_idx)
+            sys.stdout.write(f"\r    {alias_padded_old}  {_DIM}{model_old}{_RESET}\x1b[K")
 
-            # Move up from filter line to old selection line, clear >
-            up = fl - (1 + old_idx)
-            if up > 0:
-                sys.stdout.write(f"\x1b[{up}A")
-            sys.stdout.write(f"\r    {alias_padded_old}  {_DIM}{model_old}{_RESET}")
+            _move_to_row(1 + new_idx)
+            sys.stdout.write(f"\r  {_CYAN}> {alias_padded_new}  {_DIM}{model_new}{_RESET}\x1b[K")
 
-            # Move to new selection line, draw >
-            diff = new_idx - old_idx
-            if diff > 0:
-                sys.stdout.write(f"\x1b[{diff}B")
-            elif diff < 0:
-                sys.stdout.write(f"\x1b[{-diff}A")
-            sys.stdout.write(f"\r  {_CYAN}> {alias_padded_new}  {_DIM}{model_new}{_RESET}")
-
-            # Return cursor to filter line
-            down = fl - (1 + new_idx)
-            if down > 0:
-                sys.stdout.write(f"\x1b[{down}B")
-            sys.stdout.write("\r")
+            _move_to_filter()
             sys.stdout.flush()
 
         def apply_filter() -> None:
@@ -648,6 +652,7 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
 
             if byte == b"\x03":
                 sys.stdout.write("\r\n")
+                cursor_row += 1
                 return None
             if byte == b"\x1b":
                 if len(pending) < 2:
@@ -672,9 +677,11 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
                         _move_marker(old, selected_idx)
                     continue
                 sys.stdout.write("\r\n")
+                cursor_row += 1
                 return None
             if byte == b"\r":
                 sys.stdout.write("\r\n")
+                cursor_row += 1
                 if filtered:
                     _, selected_model = filtered[selected_idx]
                     return selected_model
@@ -695,12 +702,9 @@ def _model_selector(aliases: dict[str, str]) -> str | None:
                 apply_filter()
                 draw_overlay()
     finally:
-        total = rendered_items + 4  # header + items + bar + filter + shortcuts
-        for _ in range(total):
-            sys.stdout.write("\x1b[2K")
-            if _ < total - 1:
-                sys.stdout.write("\x1b[1A")
-        sys.stdout.write("\r")
+        if cursor_row > 0:
+            sys.stdout.write(f"\x1b[{cursor_row}A")
+        sys.stdout.write("\r\x1b[J")
         sys.stdout.flush()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
 
@@ -727,35 +731,8 @@ def _render_turn(
 
     Returns (assistant_text, ok, usage). *ok* is False if the stream errored.
     """
-    content_parts: list[str] = []
-    in_reasoning = False
-    in_content = False
-    usage: UsageInfo | None = None
-    ok = True
-
-    for event in events:
-        if isinstance(event, ReasoningChunk):
-            if not in_reasoning:
-                _write(f"{_DIM}{_BAR}{_RESET}\n")
-                _write(f"{_DIM}thinking…{_RESET}\n")
-                in_reasoning = True
-            _write(f"{_DIM_ITALIC}{event.text}{_RESET}")
-        elif isinstance(event, ContentChunk):
-            if in_reasoning and not in_content:
-                _write(f"\n{_DIM}{_BAR}{_RESET}\n\n")
-            elif not in_content:
-                _write(f"{_DIM}{_BAR}{_RESET}\n")
-            in_content = True
-            content_parts.append(event.text)
-            _write(event.text)
-        elif isinstance(event, UsageInfo):
-            usage = event
-        elif isinstance(event, ErrorInfo):
-            _write(f"\n{_RED}Error: {event.message}{_RESET}\n")
-            ok = False
-
-    _write(f"\n{_DIM}{_BAR}{_RESET}\n")
-    return "".join(content_parts), ok, usage
+    text, exit_code, usage = render_verbose_stream(events, show_usage=False)
+    return text, exit_code == 0, usage
 
 
 def _validate_model(model: str, cfg: Config, model_input: str | None) -> int | None:
@@ -821,7 +798,7 @@ def chat(
 
     search_mode = "auto"
 
-    sys.stdout.write("\x1b[2J\x1b[H")
+    sys.stdout.write(_CLEAR_SCREEN)
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
     _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
@@ -838,7 +815,6 @@ def chat(
         nonlocal search_mode
         idx = _SEARCH_MODES.index(search_mode)
         search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
-        _write(f"\r\n  {_DIM}Search: {search_mode}{_RESET}\r\n")
 
     def _select_model() -> str | None:
         nonlocal model
@@ -866,7 +842,7 @@ def chat(
                 footer=_make_footer,
             )
         except (EOFError, KeyboardInterrupt):
-            _write("\n")
+            _write(_CLEAR_SCREEN)
             break
 
         if not user.strip():

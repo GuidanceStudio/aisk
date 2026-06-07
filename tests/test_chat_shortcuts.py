@@ -128,6 +128,78 @@ def _run_pty_until_marker(code: str, payload: bytes, marker: bytes) -> str:
     return out.decode("utf-8", "replace")
 
 
+def _selector_output_before_cleanup(out: str) -> str:
+    legacy_cleanup = out.find("\x1b[2K")
+    if legacy_cleanup != -1:
+        return out[:legacy_cleanup]
+
+    selected = out.find("SELECTED:")
+    cancelled = out.find("CANCELLED")
+    markers = [idx for idx in (selected, cancelled) if idx != -1]
+    prefix = out[:min(markers)] if markers else out
+    final_clear = prefix.rfind("\x1b[J")
+    if final_clear != -1:
+        return prefix[:final_clear]
+    return prefix
+
+
+def _terminal_snapshot(out: str) -> list[str]:
+    rows: list[list[str]] = [[]]
+    row = 0
+    col = 0
+    i = 0
+
+    def ensure_cell(r: int, c: int = 0) -> None:
+        while len(rows) <= r:
+            rows.append([])
+        while len(rows[r]) <= c:
+            rows[r].append(" ")
+
+    while i < len(out):
+        ch = out[i]
+        if ch == "\x1b":
+            match = re.match(r"\x1b\[([0-9;?]*)([A-Za-z~])", out[i:])
+            if not match:
+                i += 1
+                continue
+            params, final = match.groups()
+            first = params.lstrip("?").split(";", 1)[0]
+            n = int(first) if first.isdigit() else 1
+
+            if final == "A":
+                row = max(0, row - n)
+            elif final == "B":
+                row += n
+            elif final == "C":
+                col += n
+            elif final == "J":
+                ensure_cell(row, col)
+                rows[row] = rows[row][:col]
+                del rows[row + 1:]
+            elif final == "K":
+                ensure_cell(row, col)
+                if n == 2:
+                    rows[row] = []
+                else:
+                    rows[row] = rows[row][:col]
+
+            i += match.end()
+            continue
+
+        if ch == "\r":
+            col = 0
+        elif ch == "\n":
+            row += 1
+            ensure_cell(row, col)
+        elif ch >= " ":
+            ensure_cell(row, col)
+            rows[row][col] = ch
+            col += 1
+        i += 1
+
+    return ["".join(line).rstrip() for line in rows]
+
+
 # ── Tests: slash commands no longer exist ──────────────────────────
 
 def test_slash_model_goes_to_model():
@@ -205,39 +277,41 @@ def test_message_starting_with_slash_not_special():
 # ── Tests: Ctrl+S search toggle (pty) ──────────────────────────────
 
 def test_ctrl_s_toggles_search_in_tty():
-    """Ctrl+S toggles search mode and prints notification, then continues input."""
+    """Ctrl+S toggles search mode silently, then continues input."""
     code = (
         "from aisk.chat import _read_user_input, _SEARCH_MODES\n"
         "search_state = {'mode': 'auto'}\n"
         "def toggle():\n"
         "    idx = _SEARCH_MODES.index(search_state['mode'])\n"
         "    search_state['mode'] = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]\n"
-        "    print(f'Search: {search_state[\"mode\"]}', flush=True)\n"
         "s = _read_user_input([], on_ctrl_s=toggle)\n"
         "print('GOT:' + repr(s), flush=True)\n"
+        "print('SEARCH:' + search_state['mode'], flush=True)\n"
     )
     out = _run_pty_python(code, b"\x13test\r")
-    assert "Search: native" in out
+    assert "Search: native" not in out
     assert "GOT:'test'" in out
+    assert "SEARCH:native" in out
 
 
 def test_ctrl_s_toggles_through_all_modes():
-    """Ctrl+S pressed multiple times cycles through all search modes."""
+    """Ctrl+S pressed multiple times cycles through all modes without notices."""
     code = (
         "from aisk.chat import _read_user_input, _SEARCH_MODES\n"
         "search_state = {'mode': 'auto'}\n"
         "def toggle():\n"
         "    idx = _SEARCH_MODES.index(search_state['mode'])\n"
         "    search_state['mode'] = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]\n"
-        "    print(f'Search: {search_state[\"mode\"]}', flush=True)\n"
         "s = _read_user_input([], on_ctrl_s=toggle)\n"
         "print('GOT:' + repr(s), flush=True)\n"
+        "print('SEARCH:' + search_state['mode'], flush=True)\n"
     )
     out = _run_pty_python(code, b"\x13\x13\x13hello\r")
-    assert "Search: native" in out
-    assert "Search: off" in out
-    assert "Search: auto" in out
+    assert "Search: native" not in out
+    assert "Search: off" not in out
+    assert "Search: auto" not in out
     assert "GOT:'hello'" in out
+    assert "SEARCH:auto" in out
 
 
 # ── Tests: Ctrl+G help (pty) ───────────────────────────────────────
@@ -277,6 +351,27 @@ def test_model_selector_navigate_and_select():
     assert "SELECTED:" in out
 
 
+def test_model_selector_navigation_keeps_rows_aligned():
+    """Arrow navigation updates the selected row, not the row below it."""
+    code = (
+        "from aisk.chat import _model_selector\n"
+        "aliases = {\n"
+        "    'aa': 'provider/short',\n"
+        "    'bb': 'provider/a-much-much-longer-model-name',\n"
+        "    'cc': 'provider/mid',\n"
+        "}\n"
+        "model = _model_selector(aliases)\n"
+        "print(f'SELECTED:{model}' if model else 'CANCELLED', flush=True)\n"
+    )
+    out = _run_pty_until_marker(code, b"\x1b[B\r", _MODEL_SELECTOR_MARKER)
+    rows = _terminal_snapshot(_selector_output_before_cleanup(out))
+
+    assert rows[1].startswith("    aa  provider/short")
+    assert rows[2].startswith("  > bb  provider/a-much-much-longer-model-name")
+    assert rows[3].startswith("    cc  provider/mid")
+    assert not any(row.startswith("Model ") for row in _terminal_snapshot(out))
+
+
 def test_model_selector_escape_cancels():
     """Esc cancels the model selector without selecting."""
     code = (
@@ -305,6 +400,26 @@ def test_model_selector_filter_and_select():
     )
     out = _run_pty_until_marker(code, b"cls\r", _MODEL_SELECTOR_MARKER)
     assert "SELECTED:" in out
+
+
+def test_model_selector_filter_redraw_reuses_overlay_origin():
+    """Filtering redraws the same overlay instead of appending below it."""
+    code = (
+        "from aisk.chat import _model_selector\n"
+        "aliases = {\n"
+        "    'aa': 'provider/short',\n"
+        "    'bb': 'provider/long',\n"
+        "}\n"
+        "model = _model_selector(aliases)\n"
+        "print(f'SELECTED:{model}' if model else 'CANCELLED', flush=True)\n"
+    )
+    out = _run_pty_until_marker(code, b"x\r", _MODEL_SELECTOR_MARKER)
+    rows = _terminal_snapshot(_selector_output_before_cleanup(out))
+
+    assert sum(1 for row in rows if row.startswith("Model ")) == 1
+    assert any("(no matches" in row for row in rows)
+    assert not any("provider/short" in row for row in rows)
+    assert not any("provider/long" in row for row in rows)
 
 
 # ── Tests: model selector helper logic ─────────────────────────────

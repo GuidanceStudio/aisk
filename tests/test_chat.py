@@ -16,7 +16,7 @@ from aisk.chat import (
     _terminal_columns,
     chat,
 )
-from aisk.client import ContentChunk, ErrorInfo, UsageInfo
+from aisk.client import ContentChunk, ErrorInfo, ReasoningChunk, UsageInfo
 from aisk.config import DEFAULT_ALIASES, Config
 
 try:
@@ -103,6 +103,47 @@ def test_render_turn_collects_content(capsys):
     assert ok is True
     assert usage.prompt_tokens == 3
     assert "Hello world" in capsys.readouterr().out
+
+
+def test_render_turn_uses_verbose_section_order(capsys):
+    text, ok, usage = _render_turn(
+        _events(
+            ReasoningChunk("thinking..."),
+            ContentChunk("answer"),
+            UsageInfo(prompt_tokens=3, completion_tokens=2, reasoning_tokens=1),
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert text == "answer"
+    assert ok is True
+    assert usage.reasoning_tokens == 1
+    assert "► THINKING" in out
+    assert "► ANSWER" in out
+    assert (
+        out.index("► THINKING")
+        < out.index("thinking...")
+        < out.index("► ANSWER")
+        < out.index("answer")
+    )
+
+
+def test_render_turn_does_not_show_late_reasoning_after_answer(capsys):
+    text, ok, usage = _render_turn(
+        _events(
+            ContentChunk("answer"),
+            ReasoningChunk("late thinking"),
+            UsageInfo(prompt_tokens=3, completion_tokens=2, reasoning_tokens=1),
+        )
+    )
+
+    out = capsys.readouterr().out
+    assert text == "answer"
+    assert ok is True
+    assert usage.reasoning_tokens == 1
+    assert "► ANSWER" in out
+    assert "late thinking" not in out
+    assert "► THINKING" not in out
 
 
 def test_render_turn_error():
@@ -416,7 +457,7 @@ def test_chat_blank_input_skipped():
     assert len(calls) == 1
 
 
-def test_chat_keyboardinterrupt_at_prompt_exits_clean():
+def test_chat_keyboardinterrupt_at_prompt_exits_clean(capsys):
     cfg = Config(api_key="k")
 
     def boom(prompt=""):
@@ -424,6 +465,20 @@ def test_chat_keyboardinterrupt_at_prompt_exits_clean():
 
     with patch("builtins.input", boom):
         assert chat("m", cfg) == 0
+
+    assert capsys.readouterr().out.endswith("\x1b[2J\x1b[H")
+
+
+def test_chat_eof_at_prompt_clears_before_exit(capsys):
+    cfg = Config(api_key="k")
+
+    def eof(prompt=""):
+        raise EOFError
+
+    with patch("builtins.input", eof):
+        assert chat("m", cfg) == 0
+
+    assert capsys.readouterr().out.endswith("\x1b[2J\x1b[H")
 
 
 def test_chat_interrupt_during_reply_continues():
