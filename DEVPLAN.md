@@ -1023,3 +1023,82 @@ Aggiungere parametro opzionale `tools: list[dict] | None = None` a `stream_chat(
 - [x] `completions.py`: aggiungere `help` ai subcommand completabili (bash + zsh).
 - [x] Test: `aisk` senza args TTY → chat; non-TTY → help. `aisk help` → help. `/model` in chat valida e switcha. `/search` cicla correttamente. `stream_chat` con tools. Config `default_model` custom.
 - [x] README: aggiornare sezione Usage con il nuovo comportamento default + comandi chat. Rimpiazzare gli esempi `aisk` a vuoto che mostrano help con `aisk help`.
+
+## M38: Keyboard shortcuts al posto dei comandi slash in-chat ✅
+
+Eliminare tutti i comandi slash (`/model`, `/search`, `/help`) introdotti in M37 e sostituirli con shortcut da tastiera, accessibili solo in raw-TTY mode.
+
+### Design
+
+#### Keybinding
+
+| Tasto | Azione |
+|---|---|
+| `Ctrl+S` | Toggle search mode (`auto → native → off → auto`). Mostra notifica breve. |
+| `Ctrl+O` | Apre il model selector fuzzy con navigazione a frecce. |
+| `Ctrl+G` | Mostra help (comandi disponibili). |
+
+Nessun comando slash rimane: messaggi che iniziano con `/` vanno al modello normalmente. Il banner mostra i tasti.
+
+Nota: `Ctrl+H` richiesto dall'utente ma è già backspace (`\b`) nel raw handler — lo lasciamo com'è. Per help usiamo `Ctrl+G` che è libero. `Ctrl+M` richiesto per model ma è già Enter (`\r`) in raw mode — usiamo `Ctrl+O` che è libero.
+
+#### Ctrl+S — search toggle
+
+- `Ctrl+S` (ASCII 0x13) è XOFF nei terminali, ma `tty.setraw()` disabilita già `IXON`. Come safety aggiuntiva, `stty -ixon` all'inizio del raw mode.
+- Il toggle cicla `_SEARCH_MODES` e stampa una notifica breve dim: `Search: native`.
+- Implementazione: callback `on_search_toggle()` passata a `_read_tty_input`.
+
+#### Ctrl+O — model selector (fuzzy menu)
+
+Premendo `Ctrl+O` (ASCII 0x0F), si apre un overlay sopra l'area del terminale:
+
+```
+── Model ─────────────────────────────────────────────
+> dsf          deepseek/deepseek-v4-flash
+  dsp          deepseek/deepseek-v4-pro
+  cls          anthropic/claude-sonnet-4.6
+  gpt55        openai/gpt-5.5
+─────────────────────────────────────────────────────
+Filter: ▌
+```
+
+Interazione:
+- Digitando: filtro case-insensitive su alias e model name. Se nessun match → riga `(no matches — Enter to use as pass-through)`.
+- ↑/↓: naviga la lista; primo elemento selezionato di default.
+- Enter: seleziona l'alias evidenziato, o usa il testo filtro come pass-through.
+- Esc / Ctrl+C: annulla, torna al prompt senza cambiare modello.
+- Dopo selezione: validazione (skip se alias noto, check cache se pass-through, come faceva `/model`). Se valido → `Switched to <model>`. Se invalido → errore con suggerimenti.
+- L'input utente in corso non viene toccato (il selettore è un overlay separato).
+
+#### Ctrl+G — help
+
+Premendo `Ctrl+G` (ASCII 0x07), stampa i tasti disponibili e continua. Non interrompe l'input corrente.
+
+#### Rimozione slash-commands
+
+- Parsing `/xxx` rimosso dal loop di `chat()`.
+- `_SEARCH_HELP` → `_SHORTCUT_HELP` con i nuovi tasti.
+- Test `test_chat_commands.py` riscritto per testare gli shortcut via raw-TTY (pty).
+- I messaggi che iniziano con `/` vanno al modello normalmente.
+- Banner aggiornato: `Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl-C: stop/exit`.
+
+### Task
+
+- [x] `chat.py`: `_read_tty_input` accetta callback opzionali `on_ctrl_s`, `on_ctrl_o`, `on_ctrl_g`; le invoca intercettando i byte `\x13`, `\x0f`, `\x07`. Per `Ctrl+S`/`Ctrl+G` chiama la callback e torna al loop; per `Ctrl+O` chiama la callback che restituisce il model name (o None).
+- [x] `chat.py`: funzione `_model_selector(aliases)` — overlay fuzzy. Legge da stdin via `os.read` in un loop interno, ridisegna l'overlay a ogni evento. Ritorna il model name o None.
+- [x] `chat.py`: funzione `_filter_items(query, aliases)` — filtro case-insensitive su alias e model name.
+- [x] `chat.py`: `chat()` — rimosso tutto il parsing slash-command. Il loop principale chiama `stream_chat` per ogni input non-vuoto.
+- [x] `chat.py`: `chat()` — callback closures `_toggle_search`, `_select_model`, `_show_help` passate a `_read_user_input`.
+- [x] `chat.py`: `_SEARCH_HELP` → `_SHORTCUT_HELP` con i tasti.
+- [x] `chat.py`: `_handle_model_switch()` estratta come funzione separata (validazione + switch e notifica).
+- [x] `chat.py`: banner aggiornato con i tasti shortcut: `Ctrl+S: search · Ctrl+O: model · Ctrl+G: help`.
+- [x] `chat.py`: `_model_selector` gestisce `\x1b` con `select.select` (timeout 50ms) per distinguere Esc standalone da sequenze freccia.
+- [x] `chat.py`: rimosso `_format_model_list` (non più usato).
+- [x] Test: `tests/test_chat_commands.py` rimosso; nuovo `tests/test_chat_shortcuts.py` con 12 test (mock + pty).
+- [x] Test: `Ctrl+S` cicla search mode via pty.
+- [x] Test: `Ctrl+O` apre il selettore, ↑/↓ naviga, Enter seleziona, Esc annulla.
+- [x] Test: `Ctrl+G` stampa help con i tasti.
+- [x] Test: messaggio che inizia con `/` va al modello (non più interpretato).
+- [x] Test: `_filter_items` unit test.
+- [x] README: aggiornata documentazione chat (shortcut al posto di comandi slash).
+

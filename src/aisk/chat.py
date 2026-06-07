@@ -192,18 +192,30 @@ else:
     _PROMPT = f"\n{_CYAN}❯{_RESET} "
 
 
-def _read_user_input(prompt_history: list[str]) -> str:
+def _read_user_input(
+    prompt_history: list[str],
+    *,
+    on_ctrl_s: Any = None,
+    on_ctrl_o: Any = None,
+    on_ctrl_g: Any = None,
+) -> str:
     """Read one chat prompt, preserving multi-line terminal paste as one value."""
     if termios is None or tty is None or not (sys.stdin.isatty() and sys.stdout.isatty()):
         return input(_PROMPT)
 
     try:
-        return _read_tty_input(prompt_history)
+        return _read_tty_input(prompt_history, on_ctrl_s=on_ctrl_s, on_ctrl_o=on_ctrl_o, on_ctrl_g=on_ctrl_g)
     except termios.error:
         return input(_PROMPT)
 
 
-def _read_tty_input(prompt_history: list[str]) -> str:
+def _read_tty_input(
+    prompt_history: list[str],
+    *,
+    on_ctrl_s: Any = None,
+    on_ctrl_o: Any = None,
+    on_ctrl_g: Any = None,
+) -> str:
     fd = sys.stdin.fileno()
     old_attrs = termios.tcgetattr(fd)
 
@@ -470,6 +482,22 @@ def _read_tty_input(prompt_history: list[str]) -> str:
             if byte == b"\x05":
                 move_end()
                 continue
+            if byte == b"\x13" and callable(on_ctrl_s):
+                on_ctrl_s()
+                redraw()
+                continue
+            if byte == b"\x0f" and callable(on_ctrl_o):
+                saved_value = text()
+                new_model = on_ctrl_o()
+                buf[:] = list(saved_value)
+                cursor = len(saved_value)
+                sys.stdout.write("\r\n" + _TTY_PROMPT + _render_input_value(saved_value))
+                redraw()
+                continue
+            if byte == b"\x07" and callable(on_ctrl_g):
+                on_ctrl_g()
+                redraw()
+                continue
             if byte == b"\n":
                 insert_newline()
                 continue
@@ -491,6 +519,132 @@ def _read_tty_input(prompt_history: list[str]) -> str:
             sys.stdout.flush()
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
+
+
+def _filter_items(query: str, aliases: dict[str, str]) -> list[tuple[str, str]]:
+    """Filter aliases by case-insensitive match on alias or model name."""
+    q = query.lower()
+    return [
+        (a, m) for a, m in sorted(aliases.items())
+        if q in a.lower() or q in m.lower()
+    ]
+
+
+def _model_selector(aliases: dict[str, str]) -> str | None:
+    """Interactive fuzzy model selector overlay.
+
+    Returns the selected model ID (from aliases) or a pass-through string,
+    or None if cancelled.
+    """
+    fd = sys.stdin.fileno()
+    old_attrs = termios.tcgetattr(fd)
+    tty.setraw(fd)
+
+    try:
+        items = sorted(aliases.items())
+        filter_text = ""
+        selected_idx = 0
+        filtered = items[:]
+        rendered_lines = 0
+
+        def redraw() -> None:
+            nonlocal selected_idx, rendered_lines
+
+            if selected_idx >= len(filtered):
+                selected_idx = max(0, len(filtered) - 1)
+
+            lines: list[str] = []
+            columns = _terminal_columns()
+            bar_len = max(10, columns - 12)
+            bar = "─" * bar_len
+            lines.append(f"\r\x1b[J{_DIM}Model {bar}{_RESET}")
+
+            max_alias = max((len(a) for a, _ in items), default=8)
+            for i, (alias, model_id) in enumerate(filtered):
+                prefix = f"{_CYAN}>" if i == selected_idx else " "
+                alias_padded = f"{alias:<{max_alias}}"
+                lines.append(f"\r  {prefix} {alias_padded}  {_DIM}{model_id}{_RESET}")
+
+            if not filtered and filter_text:
+                lines.append(f"\r  {_DIM}(no matches — Enter to use as pass-through){_RESET}")
+
+            lines.append(f"\r{_DIM}{bar}{_RESET}")
+            lines.append(f"\rFilter: {filter_text}")
+
+            sys.stdout.write("\r\n".join(lines))
+            sys.stdout.flush()
+            rendered_lines = len(lines)
+
+        def apply_filter() -> None:
+            nonlocal filtered, selected_idx
+            filtered = _filter_items(filter_text, aliases) if filter_text else items[:]
+            selected_idx = 0
+
+        redraw()
+
+        pending = b""
+        while True:
+            if not pending:
+                pending = os.read(fd, 4096)
+
+            byte = pending[:1]
+            pending = pending[1:]
+
+            if byte == b"\x03":
+                sys.stdout.write("\r\n")
+                return None
+            if byte == b"\x1b":
+                if len(pending) < 2:
+                    try:
+                        ready, _, _ = select.select([fd], [], [], 0.05)
+                        if ready:
+                            pending += os.read(fd, 16)
+                    except OSError:
+                        pass
+                if pending.startswith(b"[A") or pending.startswith(b"OA"):
+                    pending = pending[pending.index(b"A") + 1:]
+                    if selected_idx > 0:
+                        selected_idx -= 1
+                        redraw()
+                    continue
+                if pending.startswith(b"[B") or pending.startswith(b"OB"):
+                    pending = pending[pending.index(b"B") + 1:]
+                    if selected_idx < len(filtered) - 1:
+                        selected_idx += 1
+                        redraw()
+                    continue
+                sys.stdout.write("\r\n")
+                return None
+            if byte == b"\r":
+                sys.stdout.write("\r\n")
+                if filtered:
+                    _, selected_model = filtered[selected_idx]
+                    return selected_model
+                if filter_text.strip():
+                    return filter_text.strip()
+                return None
+            if byte in (b"\x7f", b"\b"):
+                if filter_text:
+                    filter_text = filter_text[:-1]
+                    apply_filter()
+                    redraw()
+                continue
+            if byte >= b" ":
+                try:
+                    filter_text += byte.decode("utf-8")
+                except UnicodeDecodeError:
+                    filter_text += byte.decode("utf-8", "replace")
+                apply_filter()
+                redraw()
+    finally:
+        sys.stdout.write("\r")
+        for _ in range(rendered_lines):
+            sys.stdout.write("\x1b[2K")
+            if _ < rendered_lines - 1:
+                sys.stdout.write("\x1b[1A")
+        sys.stdout.write("\r")
+        sys.stdout.flush()
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
 
 
 def _suggest(typed: str, aliases: dict[str, str], available: set[str] | None) -> list[str]:
@@ -566,25 +720,13 @@ def _validate_model(model: str, cfg: Config, model_input: str | None) -> int | N
 
 
 _SEARCH_MODES = ["auto", "native", "off"]
-_SEARCH_HELP = """\
-  /model <alias>   switch model (e.g. /model cls)
-  /search          toggle web search: auto → native → off → auto
-  /help            show this help""".splitlines()
-
-
-def _format_model_list(aliases: dict[str, str]) -> list[str]:
-    """Format the available aliases grouped by provider, for in-chat display."""
-    groups: dict[str, list[tuple[str, str]]] = {}
-    for alias, model_name in sorted(aliases.items()):
-        provider = model_name.split("/", 1)[0] if "/" in model_name else "Other"
-        groups.setdefault(provider, []).append((alias, model_name))
-
-    lines: list[str] = []
-    for provider in sorted(groups):
-        lines.append(f"  {provider.capitalize()}")
-        for alias, model_name in groups[provider]:
-            lines.append(f"    {alias:12s} {model_name}")
-    return lines
+_SHORTCUT_HELP = """\
+  Ctrl+S          toggle web search: auto → native → off → auto
+  Ctrl+O          select model (fuzzy menu with arrow keys)
+  Ctrl+G          show this help
+  Enter           send message
+  Ctrl+J          insert newline
+  Ctrl+C          stop reply / exit (at empty prompt)""".splitlines()
 
 
 def _compute_tools(search_mode: str) -> list[dict] | None:
@@ -604,14 +746,13 @@ def chat(
 ) -> int:
     """Run an interactive multi-turn chat REPL. Returns an exit code.
 
-    History is kept in memory and resent each turn, so the model sees the whole
-    conversation. Enter sends the prompt; Ctrl-J inserts a newline. Ctrl-C
-    stops the current reply (or exits at the prompt); Ctrl-D exits.
-
-    In-chat commands (messages starting with /):
-      /model <alias>   switch the model mid-conversation
-      /search          toggle web search: auto → native → off → auto
-      /help            list available commands
+    Keyboard shortcuts (raw-TTY mode):
+      Ctrl+S  toggle web search: auto → native → off → auto
+      Ctrl+O  select model (fuzzy menu with arrow keys)
+      Ctrl+G  show help
+      Enter   send message
+      Ctrl+J  insert newline
+      Ctrl+C  stop reply / exit (at empty prompt)
     """
     rc = _validate_model(model, cfg, model_input)
     if rc is not None:
@@ -621,7 +762,7 @@ def chat(
 
     _write(f"\n{_BLUE}{_BAR}{_RESET}\n")
     _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
-    _write(f"  {_DIM}Search: {search_mode}  ·  Enter: send · Ctrl-J: newline · Ctrl-C: stop reply/exit · Ctrl-D: exit{_RESET}\n")
+    _write(f"  {_DIM}Search: {search_mode}  ·  Ctrl+S: search · Ctrl+O: model · Ctrl+G: help · Enter: send · Ctrl-J: newline · Ctrl+C: stop/exit{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
     messages: list[dict] = list(history) if history else []
@@ -629,62 +770,42 @@ def chat(
     totals = {"cost": 0.0, "in": 0, "out": 0, "any_cost": False}
     had_success = False
 
+    def _toggle_search() -> None:
+        nonlocal search_mode
+        idx = _SEARCH_MODES.index(search_mode)
+        search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
+        _write(f"\r\n  {_DIM}Search: {search_mode}{_RESET}\r\n")
+
+    def _select_model() -> str | None:
+        nonlocal model
+        selected = _model_selector(cfg.aliases)
+        if selected is None:
+            return None
+        new_model = _handle_model_switch(selected, cfg)
+        if new_model is not None:
+            model = new_model
+        return new_model
+
+    def _show_help() -> None:
+        _write("\r\n")
+        for line in _SHORTCUT_HELP:
+            _write(f"  {_DIM}{line}{_RESET}\r\n")
+        _write("\r\n")
+
     while True:
         try:
-            user = _read_user_input(prompt_history)
+            user = _read_user_input(
+                prompt_history,
+                on_ctrl_s=_toggle_search,
+                on_ctrl_o=_select_model,
+                on_ctrl_g=_show_help,
+            )
         except (EOFError, KeyboardInterrupt):
             _write("\n")
             break
 
         if not user.strip():
             continue
-
-        if user.startswith("/"):
-            parts = user.split(maxsplit=1)
-            cmd = parts[0].lstrip("/")
-            arg = parts[1] if len(parts) > 1 else ""
-
-            if cmd == "help":
-                _write("\n")
-                for line in _SEARCH_HELP:
-                    _write(f"  {_DIM}{line}{_RESET}\n")
-                _write("\n")
-                continue
-            elif cmd == "model":
-                if not arg:
-                    _write("\n")
-                    for line in _format_model_list(cfg.aliases):
-                        _write(f"  {_DIM}{line}{_RESET}\n")
-                    _write(f"\n  {_DIM}Type /model <alias> to switch.{_RESET}\n\n")
-                    continue
-                new_model_input = arg.strip()
-                new_model = resolve_model(new_model_input, cfg.aliases)
-
-                if new_model_input in cfg.aliases:
-                    pass  # skip cache check for known aliases
-                else:
-                    verdict, available = cache.check_model(cfg.endpoint, cfg.api_key, new_model)
-                    if verdict is False:
-                        _write(f"\n  {_RED}Error: '{new_model_input}' is not a valid model.{_RESET}\n")
-                        suggestions = _suggest(new_model_input, cfg.aliases, available)
-                        if suggestions:
-                            _write(f"  {_DIM}Did you mean: {', '.join(suggestions)}?{_RESET}\n")
-                        _write("\n")
-                        continue
-                    elif verdict is None:
-                        pass  # unverifiable, proceed optimistically
-
-                model = new_model
-                _write(f"\n  {_DIM}Switched to {model}{_RESET}\n\n")
-                continue
-            elif cmd == "search":
-                idx = _SEARCH_MODES.index(search_mode)
-                search_mode = _SEARCH_MODES[(idx + 1) % len(_SEARCH_MODES)]
-                _write(f"\n  {_DIM}Search: {search_mode}{_RESET}\n\n")
-                continue
-            else:
-                _write(f"\n  {_DIM}Unknown command. Type /help for available commands.{_RESET}\n\n")
-                continue
 
         prompt_history.append(user)
         messages.append({"role": "user", "content": user})
@@ -717,6 +838,28 @@ def chat(
             _write(f"{_DIM}{_format_usage(usage, totals)}{_RESET}\n")
 
     return 0
+
+
+def _handle_model_switch(model_input: str, cfg: Config) -> str | None:
+    """Validate and switch model. Returns the new model ID or None if invalid."""
+    new_model = resolve_model(model_input, cfg.aliases)
+
+    if model_input in cfg.aliases:
+        pass  # skip cache check for known aliases
+    else:
+        verdict, available = cache.check_model(cfg.endpoint, cfg.api_key, new_model)
+        if verdict is False:
+            _write(f"\r\n  {_RED}Error: '{model_input}' is not a valid model.{_RESET}\r\n")
+            suggestions = _suggest(model_input, cfg.aliases, available)
+            if suggestions:
+                _write(f"  {_DIM}Did you mean: {', '.join(suggestions)}?{_RESET}\r\n")
+            _write("\r\n")
+            return None
+        elif verdict is None:
+            pass  # unverifiable, proceed optimistically
+
+    _write(f"\r\n  {_DIM}Switched to {new_model}{_RESET}\r\n")
+    return new_model
 
 
 def _format_usage(usage: UsageInfo, totals: dict) -> str:
