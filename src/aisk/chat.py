@@ -417,6 +417,7 @@ def _read_tty_input(
             if ft:
                 sys.stdout.write(f"\r\n  {_DIM}───{_RESET}")
                 sys.stdout.write(f"\r\n  {ft}")
+                sys.stdout.write(f"\x1b[2A\r\x1b[{_TTY_PROMPT_WIDTH}C")
         sys.stdout.flush()
 
         while True:
@@ -506,7 +507,6 @@ def _read_tty_input(
                 new_model = on_ctrl_o()
                 buf[:] = list(saved_value)
                 cursor = len(saved_value)
-                sys.stdout.write("\r\n" + _TTY_PROMPT + _render_input_value(saved_value))
                 redraw()
                 continue
             if byte == b"\x07" and callable(on_ctrl_g):
