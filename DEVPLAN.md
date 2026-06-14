@@ -1242,3 +1242,25 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 - [x] Commit & push.
 
 **Done when:** La README contiene istruzioni di installazione complete per Linux, macOS e Windows, e i test bloccano regressioni documentali sulle tre piattaforme.
+
+## M48: Fix UI chat — Enter invia, footer visibile, banner senza search
+
+**Why:** Dopo la migrazione a `prompt_toolkit` (M45/M46) l'input chat ha tre problemi: Enter non invia più il messaggio (con `multiline=True` e nessun binding di accept inserisce un a capo — confermato via test pipe), la barra footer in basso non è visibile, e l'indicazione `Search` resta duplicata nel banner in alto. Inoltre il movimento per parola con Ctrl+freccia funziona nel backend prompt_toolkit ma non nel fallback raw-TTY.
+
+**Approach:** Intervenire solo sull'input chat. Rimuovere `Search` dal banner lasciando solo il modello (lo stato search resta nel footer). Per l'Enter usare `multiline=False`: così Enter invia (default `accept-line`) senza il binding di newline concorrente che causava il doppio comportamento (a capo + invio); `Ctrl+J` resta per il newline e il paste multilinea resta gestito come blocco da prompt_toolkit. Rendere il footer con colori normali (disabilitando la bottom-toolbar reverse-video) e aggiungere una riga azzurra sopra. Per parità, aggiungere il movimento per parola (Ctrl+freccia sinistra/destra) anche al backend raw-TTY.
+
+**Tasks:**
+- [x] Test (red): il banner mostra solo il modello, non `Search:`.
+- [x] Rimuovere `· Search: {mode}` dal banner in `chat()`.
+- [x] Test (red): nel backend prompt_toolkit Enter invia, Ctrl+J/paste inseriscono a capo.
+- [x] Passare a `multiline=False` (Enter invia col default accept-line) e mantenere `Ctrl+J` per il newline.
+- [x] Verificare l'integrazione: Enter invia una sola volta (no doppio a capo+invio), Ctrl+J/paste inseriscono a capo (test pipe hang-safe + verifica via pty).
+- [x] Footer: colori normali (disabilitare la bottom-toolbar reverse-video) + riga azzurra sopra; verifica via pty.
+- [x] Test (red): nel raw-TTY Ctrl+freccia sx/dx muove di parola.
+- [x] Implementare `move_word_left`/`move_word_right` nel raw-TTY e mappare le sequenze Ctrl+freccia.
+- [x] Eseguire la suite completa.
+- [x] Commit & push.
+
+**Done when:** Nella chat Enter invia, Ctrl+J inserisce a capo, il footer è visibile in basso, il banner mostra solo il modello, e Ctrl+freccia si muove di parola in tutti i backend. Suite verde.
+
+**Execution notes:** Banner ridotto a `aisk chat — {model}` (search resta nel footer). Enter: con `multiline=True` Enter inseriva un a capo invece di inviare (regressione M45, non coperta dai test perché usano `FakeSession`); un primo fix con binding `enter`→`validate_and_handle()` funzionava nel nostro ambiente ma sul terminale dell'utente Enter (e Ctrl+Enter) facevano sia a capo sia invio. Soluzione robusta: `multiline=False`, così Enter usa il default `accept-line` e non esiste più il binding `enter`→newline concorrente; `Ctrl+J` resta per il newline e il paste bracketed con `\n` resta inserito come blocco (verificato via pty). Footer: la `bottom_toolbar` di default è reverse-video; aggiunto `_TOOLBAR_STYLE` (`bottom-toolbar: noreverse`) e il toolbar ora rende una riga azzurra (`_BLUE`) sopra il testo del footer via `ANSI()` — verificato via pty: blu presente, `\x1b[7m` (reverse) = 0. Nel backend raw-TTY aggiunte `_KEY_WORD_LEFT`/`_KEY_WORD_RIGHT` (sequenze Ctrl/Alt/rxvt) e `move_word_left`/`move_word_right` con semantica allineata a prompt_toolkit. La non-visibilità del footer riportata era un effetto collaterale di Enter rotto (input riempito di a capo). Test: test pipe prompt_toolkit (Enter invia, Ctrl+J/paste a capo), test footer (riga azzurra + colori normali + `multiline=False` + style), `2 test pty raw-TTY (Ctrl+freccia)`, banner test aggiornato. Suite completa: `231 passed, 2 skipped`.

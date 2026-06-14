@@ -30,14 +30,18 @@ try:
     from prompt_toolkit import PromptSession as _PromptSession
     from prompt_toolkit.completion import Completer as _Completer
     from prompt_toolkit.completion import Completion as _Completion
+    from prompt_toolkit.formatted_text import ANSI as _ANSI
     from prompt_toolkit.history import InMemoryHistory as _InMemoryHistory
     from prompt_toolkit.key_binding import KeyBindings as _KeyBindings
+    from prompt_toolkit.styles import Style as _Style
 except ImportError:  # pragma: no cover - dependency is declared for normal installs
     _PromptSession = None
     _Completer = None
     _Completion = None
+    _ANSI = None
     _InMemoryHistory = None
     _KeyBindings = None
+    _Style = None
 
 from aisk import cache, session
 from aisk.aliases import resolve_model
@@ -66,6 +70,9 @@ _BRACKETED_PASTE_START = b"\x1b[200~"
 _BRACKETED_PASTE_END = b"\x1b[201~"
 _KEY_LEFT = (b"\x1b[D", b"\x1bOD", b"\x1b[1D", b"\x1b[1;1D")
 _KEY_RIGHT = (b"\x1b[C", b"\x1bOC", b"\x1b[1C", b"\x1b[1;1C")
+# Ctrl+Left / Ctrl+Right (and the Alt/rxvt variants) — move by word.
+_KEY_WORD_LEFT = (b"\x1b[1;5D", b"\x1b[1;3D", b"\x1b[5D", b"\x1bOd")
+_KEY_WORD_RIGHT = (b"\x1b[1;5C", b"\x1b[1;3C", b"\x1b[5C", b"\x1bOc")
 _KEY_UP = (b"\x1b[A", b"\x1bOA", b"\x1b[1A", b"\x1b[1;1A")
 _KEY_DOWN = (b"\x1b[B", b"\x1bOB", b"\x1b[1B", b"\x1b[1;1B")
 _KEY_DELETE = (b"\x1b[3~",)
@@ -247,6 +254,15 @@ class _ModelSelectRequest:
     draft: str
 
 
+# Render the footer with normal colors instead of prompt_toolkit's default
+# reverse-video bottom bar.
+_TOOLBAR_STYLE = (
+    _Style.from_dict({"bottom-toolbar": "noreverse", "bottom-toolbar.text": "noreverse"})
+    if _Style is not None
+    else None
+)
+
+
 def _read_prompt_toolkit_input(
     prompt_history: list[str],
     *,
@@ -279,19 +295,29 @@ def _read_prompt_toolkit_input(
 
     @bindings.add("c-j")
     def _(event) -> None:
+        # Ctrl+J inserts a newline; Enter sends (the accept-line default of
+        # multiline=False). Keeping Enter as a plain accept avoids the ambiguity
+        # where it both inserts a newline and submits.
         event.current_buffer.insert_text("\n")
 
-    def bottom_toolbar() -> str:
-        return _plain(footer()) if callable(footer) else ""
+    def bottom_toolbar():
+        text = footer() if callable(footer) else ""
+        if not text:
+            return ""
+        # A blue rule above the footer; footer text keeps its normal colors
+        # (the reverse-video toolbar background is disabled via _TOOLBAR_STYLE).
+        rule = f"{_BLUE}{'─' * _terminal_columns()}{_RESET}"
+        return _ANSI(f"{rule}\n{text}")
 
-    session = _PromptSession(history=history, key_bindings=bindings)
+    session = _PromptSession(
+        history=history, key_bindings=bindings, style=_TOOLBAR_STYLE,
+    )
     draft = ""
     while True:
         result = session.prompt(
             _TTY_PROMPT_TEXT,
-            multiline=True,
+            multiline=False,
             default=draft,
-            prompt_continuation=lambda width, line_number, is_soft_wrap: _TTY_CONTINUATION,
             bottom_toolbar=bottom_toolbar,
         )
         if isinstance(result, _ModelSelectRequest):
@@ -433,6 +459,28 @@ def _read_tty_input(
         nonlocal cursor
         if cursor < len(buf):
             cursor += 1
+            redraw()
+
+    def move_word_left() -> None:
+        nonlocal cursor
+        i = cursor
+        while i > 0 and buf[i - 1].isspace():
+            i -= 1
+        while i > 0 and not buf[i - 1].isspace():
+            i -= 1
+        if i != cursor:
+            cursor = i
+            redraw()
+
+    def move_word_right() -> None:
+        nonlocal cursor
+        i, n = cursor, len(buf)
+        while i < n and buf[i].isspace():
+            i += 1
+        while i < n and not buf[i].isspace():
+            i += 1
+        if i != cursor:
+            cursor = i
             redraw()
 
     def delete_before_cursor() -> None:
@@ -591,6 +639,14 @@ def _read_tty_input(
                 pending = pending[len(_BRACKETED_PASTE_START):]
                 paste_decoder.reset()
                 in_paste = True
+                continue
+
+            if consume_sequence(_KEY_WORD_LEFT):
+                move_word_left()
+                continue
+
+            if consume_sequence(_KEY_WORD_RIGHT):
+                move_word_right()
                 continue
 
             if consume_sequence(_KEY_LEFT):
@@ -944,7 +1000,7 @@ def chat(
 
     sys.stdout.write(_CLEAR_SCREEN)
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
-    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}  ·  Search: {search_mode}{_RESET}\n")
+    _write(f"  {_CYAN}aisk chat{_RESET} {_DIM}— {model}{_RESET}\n")
     _write(f"{_BLUE}{_BAR}{_RESET}\n")
 
     messages: list[dict] = list(history) if history else []
