@@ -25,6 +25,36 @@ try:
 except ImportError:  # pragma: no cover - non-POSIX
     pty = None
 
+try:
+    from prompt_toolkit import PromptSession as _RealPromptSession
+    from prompt_toolkit.input.defaults import create_pipe_input as _create_pipe_input
+    from prompt_toolkit.output import DummyOutput as _DummyOutput
+except ImportError:  # pragma: no cover - dependency declared for normal installs
+    _create_pipe_input = None
+
+
+def _run_prompt_toolkit(monkeypatch, payload: str, *, history=None, footer=None):
+    """Drive the real prompt_toolkit backend through a pipe; return the result.
+
+    The pipe is closed after the payload so a missing accept binding raises
+    EOFError (a clean failure) instead of hanging the test forever.
+    """
+    if _create_pipe_input is None:  # pragma: no cover - prompt_toolkit always present
+        pytest.skip("prompt_toolkit is not available")
+    import aisk.chat as c
+
+    with _create_pipe_input() as inp:
+        class _PipePromptSession(_RealPromptSession):
+            def __init__(self, **kwargs):
+                kwargs.setdefault("input", inp)
+                kwargs.setdefault("output", _DummyOutput())
+                super().__init__(**kwargs)
+
+        monkeypatch.setattr(c, "_PromptSession", _PipePromptSession)
+        inp.send_text(payload)
+        inp.close()
+        return c._read_prompt_toolkit_input(history or [], footer=footer)
+
 
 def _events(*evs):
     yield from evs
@@ -405,7 +435,29 @@ def test_tty_input_continuation_line_has_no_extra_prompt():
     assert "❯ prima\r\n❯ seconda" not in out
 
 
-def test_chat_banner_shows_model_and_search(capsys):
+def test_tty_input_ctrl_left_moves_by_word():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    # From end of "hello world", Ctrl+Left jumps before "world"; insert X.
+    out = _run_pty_python(code, b"hello world\x1b[1;5DX\r")
+    assert "GOT:'hello Xworld'" in out
+
+
+def test_tty_input_ctrl_right_moves_by_word():
+    code = (
+        "from aisk.chat import _read_user_input\n"
+        "s = _read_user_input([])\n"
+        "print('GOT:' + repr(s), flush=True)\n"
+    )
+    # Home (Ctrl+A), then Ctrl+Right jumps past "hello"; insert X.
+    out = _run_pty_python(code, b"hello world\x01\x1b[1;5CX\r")
+    assert "GOT:'helloX world'" in out
+
+
+def test_chat_banner_shows_only_model(capsys):
     cfg = Config(api_key="k")
     with patch("builtins.input", _inputs()):
         chat("m", cfg)
@@ -413,7 +465,8 @@ def test_chat_banner_shows_model_and_search(capsys):
     out = capsys.readouterr().out
     assert "aisk chat" in out
     assert "m" in out
-    assert "Search: off" in out
+    # Search moved out of the banner — it lives in the footer now.
+    assert "Search:" not in out
     assert "Ctrl-C: stop the reply" not in out
 
 
@@ -524,11 +577,61 @@ def test_prompt_toolkit_input_multiline_history_footer_and_shortcuts(monkeypatch
     assert result == "prima\nseconda"
     assert captured["history"] == ["vecchio prompt"]
     assert captured["session_kwargs"]["key_bindings"] is captured["bindings"]
+    # Footer rendered with normal colors (reverse-video bar disabled).
+    assert captured["session_kwargs"]["style"] is c._TOOLBAR_STYLE
     assert captured["prompt"] == "❯ "
-    assert captured["prompt_kwargs"]["multiline"] is True
-    assert captured["prompt_kwargs"]["bottom_toolbar"]() == "footer"
+    # Enter sends (accept-line default); newlines come from Ctrl+J / paste.
+    assert captured["prompt_kwargs"]["multiline"] is False
+    toolbar = captured["prompt_kwargs"]["bottom_toolbar"]()
+    # A blue rule sits above the footer text, which keeps its own styling.
+    assert "footer" in toolbar.value
+    assert "─" in toolbar.value
     assert calls == ["search", "help"]
     assert captured["invalidated"] == 2
+
+
+def test_prompt_toolkit_footer_has_blue_rule_normal_colors(monkeypatch):
+    """Footer shows a blue rule above the text, with normal (non-reverse) colors."""
+    import aisk.chat as c
+    from aisk.output import _BLUE
+
+    captured = {}
+
+    class FakeHistory:
+        def append_string(self, value):
+            pass
+
+    class FakeBindings:
+        def __init__(self):
+            self.handlers = {}
+
+        def add(self, *keys):
+            def decorate(fn):
+                self.handlers[keys] = fn
+                return fn
+            return decorate
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            captured["session_kwargs"] = kwargs
+
+        def prompt(self, prompt, **kwargs):
+            captured["prompt_kwargs"] = kwargs
+            return "x"
+
+    monkeypatch.setattr(c, "_PromptSession", FakeSession)
+    monkeypatch.setattr(c, "_InMemoryHistory", FakeHistory)
+    monkeypatch.setattr(c, "_KeyBindings", FakeBindings)
+
+    c._read_prompt_toolkit_input([], footer=lambda: "MODEL  |  Search: off")
+
+    toolbar = captured["prompt_kwargs"]["bottom_toolbar"]().value
+    assert _BLUE in toolbar                       # blue rule above the footer
+    assert "─" in toolbar.split("\n", 1)[0]       # the rule is the first line
+    assert "MODEL  |  Search: off" in toolbar      # footer text preserved
+    # Reverse-video bar disabled via the dedicated style.
+    assert captured["session_kwargs"]["style"] is c._TOOLBAR_STYLE
+    assert c._TOOLBAR_STYLE is not None
 
 
 def test_prompt_toolkit_input_ctrl_o_preserves_draft(monkeypatch):
@@ -594,6 +697,30 @@ def test_prompt_toolkit_input_ctrl_o_preserves_draft(monkeypatch):
     assert result == "draft text plus"
     assert calls == ["model"]
     assert captured["defaults"] == ["", "draft text"]
+
+
+def test_prompt_toolkit_enter_sends_message(monkeypatch):
+    """Enter accepts/sends the message.
+
+    Regression: with multiline=True and no accept binding, Enter inserted a
+    newline instead of sending. It must accept the current input.
+    """
+    result = _run_prompt_toolkit(monkeypatch, "ciao\r")
+    assert result == "ciao"
+
+
+def test_prompt_toolkit_ctrl_j_inserts_newline_then_enter_sends(monkeypatch):
+    """Ctrl+J (\\n) inserts a newline; Enter (\\r) then sends the whole message."""
+    result = _run_prompt_toolkit(monkeypatch, "prima\nseconda\r")
+    assert result == "prima\nseconda"
+
+
+def test_prompt_toolkit_bracketed_paste_newline_does_not_send(monkeypatch):
+    """A pasted newline is inserted as text, not treated as send."""
+    result = _run_prompt_toolkit(
+        monkeypatch, "\x1b[200~riga1\nriga2\x1b[201~\r"
+    )
+    assert result == "riga1\nriga2"
 
 
 def test_prompt_toolkit_model_selector_exact_alias(monkeypatch):
