@@ -37,10 +37,14 @@ def test_aliases_apr_2026_still_current():
     assert resolve_model("gpt", DEFAULT_ALIASES) == "openai/gpt-5.5"
     assert resolve_model("gptpro", DEFAULT_ALIASES) == "openai/gpt-5.5-pro"
     assert resolve_model("dsf", DEFAULT_ALIASES) == "deepseek/deepseek-v4-flash"
-    assert resolve_model("dsp", DEFAULT_ALIASES) == "deepseek/deepseek-v4-pro"
     assert resolve_model("glm", DEFAULT_ALIASES) == "z-ai/glm-5.1"
     assert resolve_model("mm", DEFAULT_ALIASES) == "minimax/minimax-m2.7"
     assert resolve_model("kimi", DEFAULT_ALIASES) == "moonshotai/kimi-k2.6"
+
+
+def test_dsp_alias_points_to_v4_pro_0813_ga():
+    """M49: dsp moved from the apr-2026 v4-pro preview to the aug-2026 GA (0813)."""
+    assert resolve_model("dsp", DEFAULT_ALIASES) == "deepseek/deepseek-v4-pro-0813"
 
 
 def test_retained_aliases():

@@ -1264,3 +1264,18 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Done when:** Nella chat Enter invia, Ctrl+J inserisce a capo, il footer è visibile in basso, il banner mostra solo il modello, e Ctrl+freccia si muove di parola in tutti i backend. Suite verde.
 
 **Execution notes:** Banner ridotto a `aisk chat — {model}` (search resta nel footer). Enter: con `multiline=True` Enter inseriva un a capo invece di inviare (regressione M45, non coperta dai test perché usano `FakeSession`); un primo fix con binding `enter`→`validate_and_handle()` funzionava nel nostro ambiente ma sul terminale dell'utente Enter (e Ctrl+Enter) facevano sia a capo sia invio. Soluzione robusta: `multiline=False`, così Enter usa il default `accept-line` e non esiste più il binding `enter`→newline concorrente; `Ctrl+J` resta per il newline e il paste bracketed con `\n` resta inserito come blocco (verificato via pty). Footer: la `bottom_toolbar` di default è reverse-video; aggiunto `_TOOLBAR_STYLE` (`bottom-toolbar: noreverse`) e il toolbar ora rende una riga azzurra (`_BLUE`) sopra il testo del footer via `ANSI()` — verificato via pty: blu presente, `\x1b[7m` (reverse) = 0. Nel backend raw-TTY aggiunte `_KEY_WORD_LEFT`/`_KEY_WORD_RIGHT` (sequenze Ctrl/Alt/rxvt) e `move_word_left`/`move_word_right` con semantica allineata a prompt_toolkit. La non-visibilità del footer riportata era un effetto collaterale di Enter rotto (input riempito di a capo). Test: test pipe prompt_toolkit (Enter invia, Ctrl+J/paste a capo), test footer (riga azzurra + colori normali + `multiline=False` + style), `2 test pty raw-TTY (Ctrl+freccia)`, banner test aggiornato. Suite completa: `231 passed, 2 skipped`.
+
+## M49: Aggiornare alias `dsp` a DeepSeek V4 Pro 0813 (GA) ✅
+
+**Why:** `dsp` punta oggi a `deepseek/deepseek-v4-pro`, la preview del 24/04/2026 (M22), $1.74/$3.48 per 1M token I/O. Il 12/08/2026 DeepSeek ha rilasciato la GA `deepseek/deepseek-v4-pro-0813` ($0.435/$0.87, 1M ctx) — verificato su OpenRouter (pagina attiva, non 404). A differenza del caso `dsr1-0528` (M18, dove il suffisso data fu rimosso perché lo slug senza data puntava già alla stessa versione corrente), qui `deepseek/deepseek-v4-pro` **non** è stato ripuntato alla GA: resta la preview di aprile, un modello distinto e più caro. Lo slug datato è quindi l'unico modo per accedere alla GA.
+
+**Task:**
+- [x] Aggiornare `_ALIAS_GROUPS` in `src/aisk/config.py`: `("dsp", "deepseek/deepseek-v4-pro")` → `("dsp", "deepseek/deepseek-v4-pro-0813")`.
+- [x] Aggiornare l'assert in `tests/test_aliases.py` (riga 40) al nuovo model ID.
+- [x] Verificare che `test_default_conf_toml_matches_default_aliases` resti verde.
+- [x] Eseguire la suite completa.
+- [x] Commit & push.
+
+**Done when:** `dsp` risolve in `deepseek/deepseek-v4-pro-0813`, suite verde.
+
+**Execution notes:** Modello verificato su OpenRouter prima di scrivere il codice (pagina attiva, GA release, non 404). Spostato l'assert `dsp` fuori da `test_aliases_apr_2026_still_current` (non lo è più) in un test dedicato `test_dsp_alias_points_to_v4_pro_0813_ga`. Test locali: `uv run pytest -q` → `232 passed, 2 skipped`.
