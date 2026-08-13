@@ -45,7 +45,7 @@ _ALIAS_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ]),
     ("DeepSeek", [
         ("dsf", "deepseek/deepseek-v4-flash"),
-        ("dsp", "deepseek/deepseek-v4-pro"),
+        ("dsp", "deepseek/deepseek-v4-pro-0813"),
     ]),
     ("Qwen", [
         ("qwen", "qwen/qwen3.7-max"),
