@@ -63,7 +63,6 @@ def test_init_subcommand(capsys, tmp_path, monkeypatch):
 def test_models_subcommand(capsys):
     assert main(["models"]) == 0
     out = capsys.readouterr().out
-    # Check grouped output
     assert "Google" in out
     assert "gel" in out
     assert "google/gemini" in out

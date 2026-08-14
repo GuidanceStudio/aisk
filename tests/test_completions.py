@@ -268,7 +268,6 @@ def test_shortcuts_in_eval_flow(tmp_path, monkeypatch):
     monkeypatch.delenv("AISK_API_KEY", raising=False)
 
     script = generate_bash()
-    # Completions part
     assert "complete -F _aisk_completions aisk" in script
     # Shortcuts part comes after
     completions_end = script.index("complete -F _aisk_completions aisk")
@@ -285,8 +284,6 @@ def test_cli_shortcuts_no_config(capsys, tmp_path, monkeypatch):
     monkeypatch.setattr("aisk.config.ENV_FILE", tmp_path / ".env")
     monkeypatch.delenv("AISK_API_KEY", raising=False)
 
-    # With empty [shortcuts] in toml, defaults are not overridden — they still exist
-    # So this test validates the default shortcuts still show up
     assert main(["shortcuts"]) == 0
     out = capsys.readouterr().out
     assert 'ds() { aisk dsf "$@"; }' in out

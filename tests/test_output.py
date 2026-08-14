@@ -83,7 +83,6 @@ def test_quiet_content_only(capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert out == "Hello world\n"
-    # No ANSI, no decoration
     assert "\033[" not in out
     assert "ANSWER" not in out
     assert "Tokens" not in out

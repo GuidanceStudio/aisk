@@ -187,15 +187,12 @@ def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
     # Retired ex-defaults are gone
     for gone in ("clo47", "gpt5mini", "o4m", "dsv4f"):
         assert gone not in aliases
-    # Current defaults present (including the new ones)
     assert aliases["clo"] == "anthropic/claude-opus-4.8"
     assert aliases["gptmini"] == "openai/gpt-5.4-mini"
     assert aliases["dsf"] == "deepseek/deepseek-v4-flash"
-    # Genuine custom preserved
     assert aliases["myx"] == "vendor/private-model"
     # The non-custom part equals the current defaults exactly
     assert {k: v for k, v in aliases.items() if k != "myx"} == DEFAULT_ALIASES
-    # [api] and [shortcuts] untouched
     assert parsed["api"]["endpoint"] == "http://my-host/v1"
     assert parsed["shortcuts"] == {"q": "qwen"}
 

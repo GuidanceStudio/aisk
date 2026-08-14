@@ -1102,7 +1102,9 @@ Premendo `Ctrl+G` (ASCII 0x07), stampa i tasti disponibili e continua. Non inter
 - [x] Test: `_filter_items` unit test.
 - [x] README: aggiornata documentazione chat (shortcut al posto di comandi slash).
 
-## M40: Fix — model selector rendering corrotto alla navigazione
+*(M39: nessuna traccia nella storia git — né commit, né `-S`/`-G` pickaxe, né oggetti orfani. Il commit che ha introdotto M40 (`10eadbb`) lo aggiunge subito dopo M38 nello stesso diff: la numerazione è passata da M38 a M40 in fase di stesura, M39 non è mai esistito.)*
+
+## M40: Fix — model selector rendering corrotto alla navigazione ✅
 
 Quando si naviga la lista modelli con ↑/↓ nel fuzzy selector (`Ctrl+O`), il draw completo lascia il cursore sull'ultima riga dell'overlay, mentre `_move_marker` calcola gli spostamenti come se partisse dalla riga `Filter:`. Il primo `Down` quindi ridisegna le righe una posizione sotto quella corretta. Quando si digita un filtro, il repaint parte dalla riga sbagliata e può appendere un secondo overlay invece di sostituire quello esistente.
 
@@ -1117,7 +1119,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 - [x] Test pty: navigazione `Down` mantiene le righe allineate.
 - [x] Test pty: il filtro ridisegna lo stesso overlay senza lasciare la lista precedente visibile.
 
-## M41: Aggiungere installer Windows PowerShell
+## M41: Aggiungere installer Windows PowerShell ✅
 
 **Why:** `aisk` oggi si installa bene su Unix via `install.sh`, ma su Windows l'utente deve conoscere `uv` e fare setup manuale. Un installer PowerShell rende il primo utilizzo accessibile senza WSL o Git Bash.
 
@@ -1137,7 +1139,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** Test locali M41: `uv run pytest -q tests/test_install.py` → `3 passed, 2 skipped`; i due test skippati richiedono PowerShell (`pwsh`/`powershell`) e sono pronti per Windows/CI. Suite completa dopo la correzione del drain pty nei test chat: `uv run pytest -q` → `202 passed, 2 skipped`.
 
-## M42: Rendere il runtime basic portabile su Windows
+## M42: Rendere il runtime basic portabile su Windows ✅
 
 **Why:** L'installer da solo non basta: `aisk init`, one-shot, resume e chat base devono funzionare anche quando mancano `termios`, `tty` e `readline`. Questo dà supporto Windows utile prima della parità completa della REPL.
 
@@ -1154,7 +1156,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** Aggiunto `permissions.chmod_private()` e sostituiti i `chmod` diretti su config/cache/session. Test coprono `NotImplementedError` da `chmod`, fallback chat senza `termios`/`tty`, e un flusso `models` → one-shot → `--resume` sotto path tipo Windows con spazio. La chat ora parte con `Search: off` per mantenere lo streaming progressivo identico al one-shot; `Ctrl+S` abilita `off → auto → native → off`. Test locali: `uv run pytest -q` → `210 passed, 2 skipped`.
 
-## M43: Aggiungere completions e shortcut PowerShell
+## M43: Aggiungere completions e shortcut PowerShell ✅
 
 **Why:** Su Windows l'integrazione shell non può dipendere da bash/zsh. PowerShell deve avere completamento di alias/subcommand e funzioni shortcut equivalenti a quelle generate per Unix.
 
@@ -1174,7 +1176,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** `generate_powershell()` registra un `Register-ArgumentCompleter` nativo per alias/subcommand/flag e aggiunge funzioni shortcut PowerShell da `[shortcuts]`. `install_completions()` ora rileva PowerShell, usa `$env:AISK_POWERSHELL_PROFILE` quando fornito dall'installer, crea il profilo se manca e non duplica la riga `aisk completions powershell | Invoke-Expression`. `install.ps1` esegue `aisk completions install` dopo `aisk init`. Test locali: `uv run pytest -q` → `215 passed, 2 skipped`; i due skip richiedono PowerShell reale.
 
-## M44: Aggiungere guardrail CI cross-platform
+## M44: Aggiungere guardrail CI cross-platform ✅
 
 **Why:** Senza una matrice Windows reale, il supporto rischia di regredire appena si tocca input, config o installazione. Serve un controllo automatico minimo prima di affrontare la REPL avanzata.
 
@@ -1192,7 +1194,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** Aggiunto `.github/workflows/ci.yml` con matrix `ubuntu-latest`/`windows-latest`, Python 3.12, `astral-sh/setup-uv@v8`, `uv run pytest -q` e smoke Windows dedicato via `pwsh` su `tests/test_install.py` dopo `Test-Path .\install.ps1`. I test pty sono già guarded da import `pty` e saltano sulle piattaforme senza pty. README documenta il comando locale equivalente. Test locali: `uv run pytest -q` → `217 passed, 2 skipped`.
 
-## M45: Migrare il prompt chat a `prompt_toolkit`
+## M45: Migrare il prompt chat a `prompt_toolkit` ✅
 
 **Why:** Il raw terminal code attuale ha già richiesto fix delicati e resta POSIX-only. `prompt_toolkit` è la strada più solida per input multilinea, history, keybinding e footer cross-platform senza duplicare backend Unix/Windows.
 
@@ -1211,7 +1213,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** Aggiunta dipendenza `prompt-toolkit>=3.0` e lock aggiornato. `_read_user_input()` usa prompt_toolkit di default sui TTY, mantiene `AISK_CHAT_BACKEND=raw` per forzare il backend POSIX legacy e `AISK_CHAT_BACKEND=input` per fallback semplice. Il backend prompt_toolkit copre history in-sessione, input multilinea, toolbar/footer, `Ctrl+S`, `Ctrl+G` e `Ctrl+J`. I test pty legacy forzano `raw`; i nuovi test del backend sono non-pty. Test locali: `uv run pytest -q` → `220 passed, 2 skipped`.
 
-## M46: Migrare il model selector a `prompt_toolkit`
+## M46: Migrare il model selector a `prompt_toolkit` ✅
 
 **Why:** `Ctrl+O` e il fuzzy selector sono la parte più fragile del raw terminal code e la più importante per parità Windows. Migrarlo chiude il gap funzionale della chat interattiva.
 
@@ -1230,7 +1232,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Execution notes:** `Ctrl+O` nel backend prompt_toolkit chiude temporaneamente il prompt con un sentinel interno, apre il selector prompt_toolkit e poi ripristina il draft dell'utente. Il selector usa un completer case-insensitive basato su `_filter_items`, seleziona alias esatti o primo match filtrato, consente pass-through per model ID diretti e annulla con Ctrl+C/EOF. Il vecchio selector raw resta confinato a `AISK_CHAT_BACKEND=raw` e ai test pty legacy. Test locali: `uv run pytest -q` → `224 passed, 2 skipped`.
 
-## M47: Documentazione finale installer e Windows
+## M47: Documentazione finale installer e Windows ✅
 
 **Why:** Dopo l'introduzione di `install.ps1`, completions PowerShell e chat cross-platform, la README deve mostrare chiaramente i percorsi di installazione per Linux, macOS e Windows, senza lasciare ambiguità sullo script giusto.
 
@@ -1243,7 +1245,7 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 
 **Done when:** La README contiene istruzioni di installazione complete per Linux, macOS e Windows, e i test bloccano regressioni documentali sulle tre piattaforme.
 
-## M48: Fix UI chat — Enter invia, footer visibile, banner senza search
+## M48: Fix UI chat — Enter invia, footer visibile, banner senza search ✅
 
 **Why:** Dopo la migrazione a `prompt_toolkit` (M45/M46) l'input chat ha tre problemi: Enter non invia più il messaggio (con `multiline=True` e nessun binding di accept inserisce un a capo — confermato via test pipe), la barra footer in basso non è visibile, e l'indicazione `Search` resta duplicata nel banner in alto. Inoltre il movimento per parola con Ctrl+freccia funziona nel backend prompt_toolkit ma non nel fallback raw-TTY.
 
@@ -1279,3 +1281,21 @@ Tracciare la riga corrente dell'overlay e usare `Filter:` come posizione stabile
 **Done when:** `dsp` risolve in `deepseek/deepseek-v4-pro-0813`, suite verde.
 
 **Execution notes:** Modello verificato su OpenRouter prima di scrivere il codice (pagina attiva, GA release, non 404). Spostato l'assert `dsp` fuori da `test_aliases_apr_2026_still_current` (non lo è più) in un test dedicato `test_dsp_alias_points_to_v4_pro_0813_ga`. Test locali: `uv run pytest -q` → `232 passed, 2 skipped`.
+
+## M50: Devplan bookkeeping — chiudere M40-M48, rimuovere i commenti di test che ripetono l'assert ✅
+
+**Why:** M40-M48 hanno lavoro reale mergiato su `main` ma l'heading non porta mai il marker `✅`; ~14 commenti in `tests/` stanno subito sopra un `assert` e ripetono in inglese quello che l'assert già dice, invece di portare un'informazione che il nome del test non può portare.
+
+**Approach:** Per ciascuna M40-M48, confermare il commit di milestone corrispondente su `main` prima di girare l'heading a `✅` (nessuna modifica al codice, solo bookkeeping). Leggere ogni commento sopra o accanto a un `assert` in `tests/`: tenere quelli che spiegano il valore di una fixture, distinguono due assert quasi identici, o decodificano un payload opaco; cancellare quelli che ripetono l'assert o il docstring del test.
+
+**Tasks:**
+- [x] Verificare che ciascuna M40-M48 abbia un commit mergiato corrispondente su `main`, poi girare l'heading a `✅`.
+- [x] Confermare che nessun task `- [ ]`/`- [~]` resti sotto M40-M48.
+- [x] Registrare l'esito di M39 (fatto: nota inserita sopra, tra M38 e M40).
+- [x] Cancellare in `tests/` i commenti che ripetono l'assert o il docstring sottostante; tenere quelli che spiegano una fixture, un valore opaco, o distinguono assert simili.
+- [x] Eseguire la suite completa e confermare che il risultato sia invariato rispetto a prima.
+- [x] Commit di devplan + modifiche ai test insieme, push su `main`.
+
+**Done when:** Gli heading M40-M48 portano `✅`, l'esito di M39 è registrato, in `tests/` non restano commenti che ripetono l'assert sotto cui stanno, e la suite completa è verde (o invariata rispetto alla baseline).
+
+**Execution notes:** Verificati i 9 commit di milestone (`10eadbb`..`61040dc`) su `main` prima di girare gli heading. 32 commenti candidati letti in `tests/`: 13 cancellati perché ripetevano l'assert o il docstring sottostante, 16 tenuti perché spiegavano una fixture, un payload opaco, o distinguevano due assert simili. Test locali: `uv run pytest -q` → `232 passed, 2 skipped`, invariato.
