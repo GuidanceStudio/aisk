@@ -465,7 +465,6 @@ def test_chat_banner_shows_only_model(capsys):
     out = capsys.readouterr().out
     assert "aisk chat" in out
     assert "m" in out
-    # Search moved out of the banner — it lives in the footer now.
     assert "Search:" not in out
     assert "Ctrl-C: stop the reply" not in out
 
@@ -577,13 +576,11 @@ def test_prompt_toolkit_input_multiline_history_footer_and_shortcuts(monkeypatch
     assert result == "prima\nseconda"
     assert captured["history"] == ["vecchio prompt"]
     assert captured["session_kwargs"]["key_bindings"] is captured["bindings"]
-    # Footer rendered with normal colors (reverse-video bar disabled).
     assert captured["session_kwargs"]["style"] is c._TOOLBAR_STYLE
     assert captured["prompt"] == "❯ "
     # Enter sends (accept-line default); newlines come from Ctrl+J / paste.
     assert captured["prompt_kwargs"]["multiline"] is False
     toolbar = captured["prompt_kwargs"]["bottom_toolbar"]()
-    # A blue rule sits above the footer text, which keeps its own styling.
     assert "footer" in toolbar.value
     assert "─" in toolbar.value
     assert calls == ["search", "help"]
@@ -626,10 +623,9 @@ def test_prompt_toolkit_footer_has_blue_rule_normal_colors(monkeypatch):
     c._read_prompt_toolkit_input([], footer=lambda: "MODEL  |  Search: off")
 
     toolbar = captured["prompt_kwargs"]["bottom_toolbar"]().value
-    assert _BLUE in toolbar                       # blue rule above the footer
-    assert "─" in toolbar.split("\n", 1)[0]       # the rule is the first line
-    assert "MODEL  |  Search: off" in toolbar      # footer text preserved
-    # Reverse-video bar disabled via the dedicated style.
+    assert _BLUE in toolbar
+    assert "─" in toolbar.split("\n", 1)[0]
+    assert "MODEL  |  Search: off" in toolbar
     assert captured["session_kwargs"]["style"] is c._TOOLBAR_STYLE
     assert c._TOOLBAR_STYLE is not None
 
@@ -850,7 +846,6 @@ def test_chat_blank_input_skipped():
          patch("builtins.input", _inputs("  ", "real")):
         chat("m", cfg)
 
-    # Blank line did not trigger a request.
     assert len(calls) == 1
 
 
@@ -895,7 +890,6 @@ def test_chat_interrupt_during_reply_continues():
          patch("builtins.input", _inputs("first", "second")):
         assert chat("m", cfg) == 0
 
-    # Second turn must NOT carry the interrupted 'first' exchange.
     assert captured[1] == [{"role": "user", "content": "second"}]
 
 
