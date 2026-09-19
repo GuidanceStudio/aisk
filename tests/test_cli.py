@@ -49,7 +49,7 @@ def test_no_args_tty_enters_chat(capsys, monkeypatch):
         assert main([]) == 0
 
     # Should use the default model dsf, resolved to the full model ID
-    assert called["model"] == "deepseek/deepseek-v4-flash"
+    assert called["model"] == "deepseek/deepseek-v4.1-flash"
 
 
 def test_init_subcommand(capsys, tmp_path, monkeypatch):
@@ -149,7 +149,7 @@ def test_model_no_message_tty_enters_chat(monkeypatch):
          patch("aisk.cli.chat", fake_chat):
         mock_stdin.isatty.return_value = True
         assert main(["gel"]) == 0
-    assert called["model"] == "google/gemini-3.1-flash-lite-preview"
+    assert called["model"] == "google/gemini-3.5-flash-lite"
 
 
 def test_model_stdin_message(capsys, monkeypatch):
@@ -203,7 +203,7 @@ def test_oneshot_persists_session(monkeypatch):
         assert main(["dsf", "ciao"]) == 0
     from aisk import session
     s = session.load_session()
-    assert s["model"] == "deepseek/deepseek-v4-flash"
+    assert s["model"] == "deepseek/deepseek-v4.1-flash"
     assert s["messages"] == [
         {"role": "user", "content": "ciao"},
         {"role": "assistant", "content": "answer"},

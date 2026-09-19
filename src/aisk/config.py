@@ -28,39 +28,37 @@ _ANSI_SGR_RE = re.compile(r"\033\[[0-9;]*m")
 _ALIAS_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ("Google Gemini", [
         ("gep", "google/gemini-3.1-pro-preview"),
-        ("gef", "google/gemini-3.5-flash"),
-        ("gel", "google/gemini-3.1-flash-lite-preview"),
+        ("gef", "google/gemini-3.8-flash"),
+        ("gel", "google/gemini-3.5-flash-lite"),
         ("ge25lite", "google/gemini-2.5-flash-lite"),
     ]),
     ("OpenAI", [
-        ("gpt", "openai/gpt-5.5"),
-        ("gptpro", "openai/gpt-5.5-pro"),
+        ("gpt", "openai/gpt-5.6-sol"),
+        ("gptpro", "openai/gpt-5.6-sol-pro"),
         ("gptmini", "openai/gpt-5.4-mini"),
         ("gptnano", "openai/gpt-5.4-nano"),
     ]),
     ("Anthropic", [
-        ("clo", "anthropic/claude-opus-4.8"),
-        ("cls", "anthropic/claude-sonnet-4.6"),
+        ("clo", "anthropic/claude-opus-5"),
+        ("cls", "anthropic/claude-sonnet-5"),
         ("clh", "anthropic/claude-haiku-4.5"),
     ]),
     ("DeepSeek", [
-        ("dsf", "deepseek/deepseek-v4-flash"),
+        ("dsf", "deepseek/deepseek-v4.1-flash"),
         ("dsp", "deepseek/deepseek-v4-pro-0813"),
     ]),
     ("Qwen", [
-        ("qwen", "qwen/qwen3.7-max"),
+        ("qwen", "qwen/qwen3.8-max-0902"),
     ]),
     ("Perplexity", [
         ("s", "perplexity/sonar"),
         ("sps", "perplexity/sonar-pro-search"),
     ]),
     ("Other", [
-        ("mm", "minimax/minimax-m2.7"),
-        ("glm", "z-ai/glm-5.1"),
-        ("kimi", "moonshotai/kimi-k2.6"),
-        ("mistral", "mistralai/mistral-large-2512"),
-        ("lscout", "meta-llama/llama-4-scout:groq"),
-        ("lmav", "meta-llama/llama-4-maverick:groq"),
+        ("mm", "minimax/minimax-m3"),
+        ("glm", "z-ai/glm-5.3"),
+        ("kimi", "moonshotai/kimi-k3"),
+        ("mistral", "mistralai/mistral-medium-3-5"),
     ]),
 ]
 
@@ -90,8 +88,6 @@ ALIAS_RENAMES: dict[str, str] = {
     "m27": "mm",
     "glm51": "glm",
     "kimi26": "kimi",
-    "l4scout": "lscout",
-    "l4mav": "lmav",
 }
 
 # Alias keys ever shipped as defaults and since removed/renamed. Used by
@@ -106,6 +102,8 @@ RETIRED_ALIASES: frozenset[str] = frozenset({
     "gpt5mini", "gpt5nano", "o4m",
     # M37 (jun 2026): aliases now avoid model-version numbers by default.
     *ALIAS_RENAMES,
+    # M52 (set 2026): Groq non serve più llama-4 su OpenRouter, il pin :groq era rotto.
+    "lscout", "lmav", "l4scout", "l4mav",
     # stale before M22
     "gpt5", "gpt51", "gpt52", "ge3flash", "k25",
 })

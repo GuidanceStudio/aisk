@@ -99,3 +99,59 @@ Da 21 a 18. Lista aggiornata:
 **Done when:** `DEVPLAN.md` contiene solo M18, la nota M39 e questa milestone; `DEVPLAN-ARCHIVE.md` contiene le 48 righe archiviate con sha verificato; il diff dell'insieme degli ID è vuoto; la suite è verde.
 
 **Execution notes:** 48 milestone archiviate (0 senza commit trovato), tutti gli sha verificati con `git cat-file -e`. Diff ID set prima/dopo: vuoto (nessuna milestone persa; M51 è l'unico ID nuovo). `uv run pytest -q` non torna pulito in questo sandbox: 3-5 test falliscono in modo non deterministico tra run diversi (`test_chat.py`/`test_chat_shortcuts.py`, tutti basati su `pty.openpty()` con timeout 2s). Confermato non causato da questa milestone: `git status` mostra zero file di codice toccati (solo `DEVPLAN.md` modificato, `DEVPLAN-ARCHIVE.md` nuovo), e `tty`/`sys.stdout.isatty()` confermano che questa shell non ha un tty di controllo reale — i sottoprocessi pty timeoutano per limite dell'ambiente, non per regressione. Nessuna modifica al codice applicativo.
+
+## M52: Aggiornare gli alias default al catalogo di settembre 2026 ✅
+
+**Why:** Tre alias non funzionano più e otto puntano a modelli superati. `mistral` →
+`mistralai/mistral-large-2512` è stato delistato da OpenRouter (sopravvive solo la variante
+`:batch`, che non è utilizzabile in chat); `lscout`/`lmav` pinnano Groq con il suffisso
+`:groq`, ma l'API `/models/<id>/endpoints` di OpenRouter mostra che llama-4-scout è servito
+solo da DeepInfra, Novita e Vertex e maverick da DigitalOcean, DeepInfra, Novita, Parasail e
+Vertex — Groq non compare per nessuno dei due, quindi con `allow_fallbacks` implicito su un
+provider assente la richiesta fallisce. Gli altri otto sono semplicemente indietro di una o
+due generazioni, e per quattro di essi il modello nuovo costa uguale o meno.
+
+**Approach:** Ogni target è stato verificato contro `/api/v1/models` (445 modelli, scaricato
+il 2026-09-18) prima di essere scritto: presenza dello slug esatto, data di rilascio e
+prezzo. Due slug "ovvi" non esistono e sarebbero passati inosservati scrivendoli a mano:
+`qwen/qwen3.8-max` (l'id reale è `qwen3.8-max-0902`) e `meta-llama/llama-4-scout:groq`. Gli
+alias rotti si dividono: `mistral` viene ripuntato al generalista Mistral più recente
+(`mistral-medium-3-5`, apr 2026), mentre `lscout`/`lmav` vengono ritirati — Llama 4 è di
+aprile 2025 e nessuno dei due è più competitivo nella fascia in cui veniva usato. Ritirare
+un alias significa toglierlo da `_ALIAS_GROUPS` **e** rimuovere la sua voce da
+`ALIAS_RENAMES`: quel dict viene splattato dentro `RETIRED_ALIASES`, e l'invariante
+`set(ALIAS_RENAMES.values()).issubset(DEFAULT_ALIASES)` andrebbe rossa lasciandolo lì. Le
+chiavi vecchie `l4scout`/`l4mav` vanno quindi elencate esplicitamente fra i ritirati.
+
+Scelte con un costo in più, decise dall'utente: `dsf` (il default di `aisk`) passa a
+`deepseek-v4.1-flash` a 0.30/1.20 $/M contro 0.089/0.177 del v4-flash; `qwen`, `glm`, `kimi`
+e `gel` salgono di prezzo in cambio di modelli più recenti e, per glm/kimi/mm, di un
+contesto da 1M+ token contro i 200-260k attuali. `gef` e `cls` costano meno di prima.
+
+**Tasks:**
+- [x] Aggiornare gli otto alias superati in `_ALIAS_GROUPS` (`clo`, `cls`, `gef`, `gel`, `dsf`, `qwen`, `mm`, `glm`, `kimi`) e ripuntare `mistral`.
+- [x] Ritirare `lscout`/`lmav`: fuori da `_ALIAS_GROUPS`, fuori da `ALIAS_RENAMES`, dentro `RETIRED_ALIASES` insieme a `l4scout`/`l4mav`.
+- [x] Portare `gpt`/`gptpro` alla famiglia 5.6: scelto Sol, il flagship della serie secondo le descrizioni di catalogo, perché `gpt`/`gptpro` occupavano già lo slot flagship (5.5 e 5.5-pro). Costa meno di prima: 2/10 contro 5/30 $/M.
+- [x] Aggiornare i test: nuovo `test_aliases_sep_2026_refresh`, ridurre i test M22/M24/M28 alle asserzioni ancora vere, test dei due llama ritirati, valori in `test_config.py`.
+- [x] Aggiornare gli id di modello citati nel README (esempio `gel`, conf di esempio, riga del default).
+- [x] Eseguire `aisk sync` e verificare che `~/.aisk/conf.toml` rifletta i nuovi default mantenendo `[api]`, `[shortcuts]` e gli alias custom.
+
+**Done when:** `uv run pytest -q` è verde a meno dei test pty già noti come flaky in questo
+ambiente (vedi M51); nessun alias default punta a uno slug assente dal catalogo OpenRouter;
+`aisk sync` riporta i dieci alias aggiornati in `updated` e i due llama in `removed`.
+
+**Execution notes:** Dodici alias aggiornati (`clo`, `cls`, `dsf`, `gef`, `gel`, `glm`, `gpt`,
+`gptpro`, `kimi`, `mistral`, `mm`, `qwen`) e due ritirati (`lscout`, `lmav`), come riportato da
+`aisk sync`: `[api]`, `[shortcuts]` e la sezione `[defaults]` sono rimasti intatti. Suite:
+`234 passed, 2 skipped` — i test pty che M51 segnalava come flaky qui sono passati.
+
+La verifica che conta non è stata la suite ma una chiamata reale per ognuno dei dodici alias
+cambiati (`aisk -q <alias> "rispondi con una sola parola: ok"`): tutti e dodici hanno risposto.
+Un test unitario confronta due stringhe e resta verde anche se lo slug non esiste più — è
+esattamente il modo in cui `mistral` e i due llama sono rimasti rotti senza che nessuno se ne
+accorgesse. Due slug plausibili e sbagliati erano già pronti a ripetere la storia:
+`qwen/qwen3.8-max` (l'id reale porta il suffisso `-0902`) e `meta-llama/llama-4-scout:groq`.
+
+Nessuna regressione sul prompt caching: `_supports_explicit_cache` decide su `"claude" in m or
+"gemini" in m`, quindi `claude-opus-5` e `gemini-3.8-flash` continuano a ricevere il breakpoint
+`cache_control` senza toccare la funzione.

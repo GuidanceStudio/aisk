@@ -14,8 +14,8 @@ aisk gel "explain monads in Haskell"
 - **Web search** — toggle with `Ctrl+S` in chat (off by default; cycles off → auto → native → off)
 - **Resume** — `aisk --resume` continues your last conversation (per-terminal, no clobber across windows)
 - **Prompt caching** — on by default; cuts cost on long chats/resumes (`AISK_PROMPT_CACHE=0` to disable)
-- **Reasoning support** — shows thinking tokens for models like GPT-5.5, DeepSeek V4
-- **Model aliases** — short names for long model IDs (`gel` → `google/gemini-3.1-flash-lite-preview`)
+- **Reasoning support** — shows thinking tokens for models like GPT-5.6, DeepSeek V4.1
+- **Model aliases** — short names for long model IDs (`gel` → `google/gemini-3.5-flash-lite`)
 - **Pass-through models** — use any model directly: `aisk perplexity/sonar "query"`
 - **Quiet mode** — `-q` strips all decoration, perfect for piping
 - **Buffered mode** — `-S` prints the full response at the end instead of streaming
@@ -156,8 +156,8 @@ endpoint = "https://openrouter.ai/api/v1/chat/completions"
 model = "dsf"
 
 [aliases]
-gel = "google/gemini-3.1-flash-lite-preview"
-cls = "anthropic/claude-sonnet-4.6"
+gel = "google/gemini-3.5-flash-lite"
+cls = "anthropic/claude-sonnet-5"
 # ... add your own
 ```
 
@@ -185,14 +185,14 @@ curl -fsSL https://raw.githubusercontent.com/GuidanceStudio/aisk/main/install.sh
 ```
 
 `AISK_API_KEY` is the key for whatever endpoint you choose. Note that the default
-aliases use OpenRouter slugs (`anthropic/claude-sonnet-4.6`); on a direct provider
-the model is named natively (e.g. `gpt-5.5`), so use the pass-through form
-(`aisk gpt-5.5 "hi"`) or define your own aliases.
+aliases use OpenRouter slugs (`anthropic/claude-sonnet-5`); on a direct provider
+the model is named natively (e.g. `gpt-5.6-sol`), so use the pass-through form
+(`aisk gpt-5.6-sol "hi"`) or define your own aliases.
 
 ## Usage
 
 ```bash
-# Start chat with the default model (dsf — DeepSeek V4 Flash)
+# Start chat with the default model (dsf — DeepSeek V4.1 Flash)
 aisk
 
 # Ask a question (verbose mode, default)
@@ -255,7 +255,7 @@ aisk --version
 
 ```
 ──────────────────────────────────────────────────────────────────────────────────────────────────
- Model: google/gemini-3.1-flash-lite-preview | User: what is the CAP theorem?
+ Model: google/gemini-3.5-flash-lite | User: what is the CAP theorem?
 ──────────────────────────────────────────────────────────────────────────────────────────────────
 ► ANSWER
 The CAP theorem states that a distributed system can only guarantee

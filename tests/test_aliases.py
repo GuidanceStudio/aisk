@@ -3,7 +3,7 @@ from aisk.config import ALIAS_RENAMES, DEFAULT_ALIASES, RETIRED_ALIASES
 
 
 def test_known_alias():
-    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
+    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.5-flash-lite"
 
 
 def test_unknown_passthrough():
@@ -22,24 +22,15 @@ def test_perplexity_aliases():
 
 
 def test_new_aliases_jun_2026():
-    """M24/M28: June 2026 refresh — new/updated aliases point to current models."""
-    assert resolve_model("clo", DEFAULT_ALIASES) == "anthropic/claude-opus-4.8"
-    assert resolve_model("qwen", DEFAULT_ALIASES) == "qwen/qwen3.7-max"
-    assert resolve_model("gef", DEFAULT_ALIASES) == "google/gemini-3.5-flash"
+    """M24/M28: quel che regge ancora del refresh di giugno 2026.
+
+    clo, qwen e gef sono passati a M52; qui restano solo gli alias che quel
+    refresh ha fissato e che il catalogo di settembre 2026 non ha superato.
+    """
     assert resolve_model("ge25lite", DEFAULT_ALIASES) == "google/gemini-2.5-flash-lite"
     # M28: current OpenAI small models are GPT-5.4 mini/nano
     assert resolve_model("gptmini", DEFAULT_ALIASES) == "openai/gpt-5.4-mini"
     assert resolve_model("gptnano", DEFAULT_ALIASES) == "openai/gpt-5.4-nano"
-
-
-def test_aliases_apr_2026_still_current():
-    """M22 aliases that remain current in June 2026."""
-    assert resolve_model("gpt", DEFAULT_ALIASES) == "openai/gpt-5.5"
-    assert resolve_model("gptpro", DEFAULT_ALIASES) == "openai/gpt-5.5-pro"
-    assert resolve_model("dsf", DEFAULT_ALIASES) == "deepseek/deepseek-v4-flash"
-    assert resolve_model("glm", DEFAULT_ALIASES) == "z-ai/glm-5.1"
-    assert resolve_model("mm", DEFAULT_ALIASES) == "minimax/minimax-m2.7"
-    assert resolve_model("kimi", DEFAULT_ALIASES) == "moonshotai/kimi-k2.6"
 
 
 def test_dsp_alias_points_to_v4_pro_0813_ga():
@@ -48,11 +39,38 @@ def test_dsp_alias_points_to_v4_pro_0813_ga():
 
 
 def test_retained_aliases():
-    """Aliases kept from the previous catalog (still current in apr 2026)."""
-    assert resolve_model("cls", DEFAULT_ALIASES) == "anthropic/claude-sonnet-4.6"
+    """Alias mai superati: clh è l'ultimo Haiku, gep l'ultimo Gemini Pro (set 2026)."""
     assert resolve_model("clh", DEFAULT_ALIASES) == "anthropic/claude-haiku-4.5"
-    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.1-flash-lite-preview"
     assert resolve_model("gep", DEFAULT_ALIASES) == "google/gemini-3.1-pro-preview"
+
+
+def test_aliases_sep_2026_refresh():
+    """M52: ogni slug verificato contro /api/v1/models il 2026-09-18."""
+    assert resolve_model("dsf", DEFAULT_ALIASES) == "deepseek/deepseek-v4.1-flash"
+    assert resolve_model("clo", DEFAULT_ALIASES) == "anthropic/claude-opus-5"
+    assert resolve_model("cls", DEFAULT_ALIASES) == "anthropic/claude-sonnet-5"
+    assert resolve_model("gef", DEFAULT_ALIASES) == "google/gemini-3.8-flash"
+    assert resolve_model("gel", DEFAULT_ALIASES) == "google/gemini-3.5-flash-lite"
+    assert resolve_model("qwen", DEFAULT_ALIASES) == "qwen/qwen3.8-max-0902"
+    assert resolve_model("mm", DEFAULT_ALIASES) == "minimax/minimax-m3"
+    assert resolve_model("glm", DEFAULT_ALIASES) == "z-ai/glm-5.3"
+    assert resolve_model("kimi", DEFAULT_ALIASES) == "moonshotai/kimi-k3"
+    # gpt/gptpro tengono lo slot flagship: Sol e' il flagship della serie 5.6,
+    # Terra il bilanciato e Luna l'economico (descrizioni del catalogo OpenRouter).
+    assert resolve_model("gpt", DEFAULT_ALIASES) == "openai/gpt-5.6-sol"
+    assert resolve_model("gptpro", DEFAULT_ALIASES) == "openai/gpt-5.6-sol-pro"
+
+
+def test_m52_mistral_repointed_off_delisted_model():
+    """M52: mistral-large-2512 è stato delistato (resta solo la variante :batch)."""
+    assert resolve_model("mistral", DEFAULT_ALIASES) == "mistralai/mistral-medium-3-5"
+
+
+def test_m52_llama_groq_aliases_retired():
+    """M52: Groq non è più fra i provider di llama-4 su OpenRouter, il pin :groq falliva."""
+    for alias in ("lscout", "lmav", "l4scout", "l4mav"):
+        assert alias in RETIRED_ALIASES
+        assert resolve_model(alias, DEFAULT_ALIASES) == alias
 
 
 def test_retired_aliases_passthrough():

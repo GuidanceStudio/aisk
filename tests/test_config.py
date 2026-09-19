@@ -172,7 +172,7 @@ def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
         'gpt5mini = "openai/gpt-5-mini"\n'         # retired → dropped
         'o4m = "openai/o4-mini"\n'                 # retired → dropped
         'dsv4f = "deepseek/deepseek-v4-flash"\n'   # renamed default → dropped
-        'cls = "anthropic/claude-sonnet-4.6"\n'  # current default → kept (as default)
+        'cls = "anthropic/claude-sonnet-4.6"\n'  # stale value of a current key → refreshed
         'myx = "vendor/private-model"\n'           # genuine custom → kept
         "\n[shortcuts]\n"
         'q = "qwen"\n'
@@ -187,9 +187,9 @@ def test_sync_aliases_refreshes_defaults_keeps_custom(tmp_path):
     # Retired ex-defaults are gone
     for gone in ("clo47", "gpt5mini", "o4m", "dsv4f"):
         assert gone not in aliases
-    assert aliases["clo"] == "anthropic/claude-opus-4.8"
+    assert aliases["clo"] == "anthropic/claude-opus-5"
     assert aliases["gptmini"] == "openai/gpt-5.4-mini"
-    assert aliases["dsf"] == "deepseek/deepseek-v4-flash"
+    assert aliases["dsf"] == "deepseek/deepseek-v4.1-flash"
     assert aliases["myx"] == "vendor/private-model"
     # The non-custom part equals the current defaults exactly
     assert {k: v for k, v in aliases.items() if k != "myx"} == DEFAULT_ALIASES
